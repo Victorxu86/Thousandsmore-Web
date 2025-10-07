@@ -8,7 +8,7 @@ export function getStripe(): Stripe {
   if (!secretKey) {
     throw new Error("Missing STRIPE_SECRET_KEY env");
   }
-  stripeClient = new Stripe(secretKey, { apiVersion: "2024-06-20" });
+  stripeClient = new Stripe(secretKey);
   return stripeClient;
 }
 

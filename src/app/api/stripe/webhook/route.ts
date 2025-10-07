@@ -33,19 +33,7 @@ export async function POST(req: NextRequest) {
         const email = session.customer_details?.email || session.customer_email || null;
         if (email) {
           const supabase = getSupabaseAdmin();
-          // 找用户（按 email）
-          const { data: users, error: userErr } = await supabase
-            .from("profiles")
-            .select("id, email")
-            .eq("email", email)
-            .limit(1);
-
-          let userId: string | null = null;
-          if (!userErr && users && users.length > 0) {
-            userId = users[0].id as string;
-          }
-
-          // 如果没有自建 profiles，可仅记录邮箱为外键字段（简化实现）
+          // 简化：仅按邮箱落库权益与购买记录
           // 开通权益（以邮箱为键）
           const { error: entErr } = await supabase
             .from("entitlements")

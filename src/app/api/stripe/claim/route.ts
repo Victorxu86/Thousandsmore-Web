@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import Stripe from "stripe";
 import { getStripe } from "@/lib/stripe";
 import { ENTITLEMENT_COOKIE, verifyEntitlement } from "@/lib/token";
 
@@ -9,7 +8,8 @@ export async function POST(req: NextRequest) {
     if (!session_id) return NextResponse.json({ error: "missing session_id" }, { status: 400 });
     const stripe = getStripe();
     const session = await stripe.checkout.sessions.retrieve(session_id);
-    const token = (session.metadata && (session.metadata as any).tm_token) as string | undefined;
+    const metadata = (session.metadata ?? {}) as Record<string, string>;
+    const token = metadata.tm_token as string | undefined;
     const payload = verifyEntitlement(token);
     if (!payload) return NextResponse.json({ error: "invalid token" }, { status: 400 });
     const res = NextResponse.json({ ok: true, email: payload.email });

@@ -16,7 +16,6 @@ export default function PlayCategoryPage({ params }: PageProps) {
   const [currentPrompt, setCurrentPrompt] = useState<Prompt | null>(null);
   const [seenPromptIds, setSeenPromptIds] = useState<Set<string>>(new Set());
   const [isPro, setIsPro] = useState<boolean>(false);
-  const [usedCount, setUsedCount] = useState<number>(0);
 
   useEffect(() => {
     // 从后端查询是否解锁，以及返回列表（后端会按 15 或全部控制）
@@ -36,7 +35,6 @@ export default function PlayCategoryPage({ params }: PageProps) {
     const next = getRandomPrompt(prompts, undefined);
     setCurrentPrompt(next);
     setSeenPromptIds(new Set(next ? [next.id] : []));
-    setUsedCount(1);
   }, [category, typeFilter]);
 
   if (!category) {
@@ -71,7 +69,6 @@ export default function PlayCategoryPage({ params }: PageProps) {
       newSeen.add(next.id);
       setSeenPromptIds(newSeen);
       setCurrentPrompt(next);
-      setUsedCount((c) => c + 1);
     }
   }
 

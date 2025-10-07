@@ -36,6 +36,10 @@ export async function POST(req: NextRequest) {
       success_url: `${baseUrl}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `${baseUrl}/pricing`,
       allow_promotion_codes: true,
+      // 关键：确保收集并绑定邮箱，便于 webhook/恢复
+      customer_creation: "always",
+      customer_email: undefined,
+      ui_mode: "hosted",
     };
 
     const session = await stripe.checkout.sessions.create(params);

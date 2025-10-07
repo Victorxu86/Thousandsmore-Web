@@ -33,6 +33,7 @@ export default function RootLayout({
           <Link href="/" className="font-medium">Thousandsmore</Link>
           <nav className="flex items-center gap-4 text-sm">
             <Link href="/pricing" className="hover:underline">定价</Link>
+            <Link href="/restore" className="hover:underline">恢复购买</Link>
             <AuthStatus />
           </nav>
         </header>

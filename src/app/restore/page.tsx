@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { getSupabaseBrowser } from "@/lib/supabase";
+import { getBaseUrl } from "@/lib/config";
 
 export default function RestorePage() {
   const supabase = getSupabaseBrowser();
@@ -14,7 +15,7 @@ export default function RestorePage() {
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: `${window.location.origin}/restore/callback` },
+        options: { emailRedirectTo: `${getBaseUrl()}/restore/callback` },
       });
       if (error) throw error;
       setMsg("恢复链接已发送，请检查邮箱");

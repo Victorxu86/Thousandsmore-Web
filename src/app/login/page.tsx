@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
 import { getSupabaseBrowser } from "@/lib/supabase";
+import { getBaseUrl } from "@/lib/config";
 
 export default function LoginPage() {
   const supabase = getSupabaseBrowser();
@@ -15,7 +16,7 @@ export default function LoginPage() {
       const { error } = await supabase.auth.signInWithOtp({
         email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${getBaseUrl()}/auth/callback`,
         },
       });
       if (error) throw error;

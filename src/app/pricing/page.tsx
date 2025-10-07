@@ -22,8 +22,9 @@ export default function PricingPage() {
                 const data = await res.json();
                 if (data.url) window.location.href = data.url;
                 else alert(data.error || "无法创建结账会话");
-              } catch (e: any) {
-                alert(e?.message || "网络异常");
+              } catch (e: unknown) {
+                const message = e instanceof Error ? e.message : "网络异常";
+                alert(message);
               }
             }}
           >

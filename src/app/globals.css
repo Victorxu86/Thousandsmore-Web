@@ -68,3 +68,12 @@ body {
 .intro-ring-1 { animation: intro-orbit-1 2.8s ease-in-out forwards; }
 .intro-ring-2 { animation: intro-orbit-2 3.0s ease-in-out forwards; }
 .intro-ring-3 { animation: intro-orbit-3 3.2s ease-in-out forwards; }
+
+/* 标题渐显，与欢迎动画同时结束 */
+@keyframes intro-fade-in {
+  0% { opacity: 0; }
+  100% { opacity: 1; }
+}
+.intro-fade {
+  animation: intro-fade-in 3.3s ease forwards;
+}

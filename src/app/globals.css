@@ -41,3 +41,30 @@ body {
   animation-iteration-count: infinite;
   animation-timing-function: ease-in-out;
 }
+
+/* 欢迎页三圆圈：大幅不规则移动并汇聚到原点(0,0) */
+@keyframes intro-orbit-1 {
+  0% { transform: translate(-140%, -40%) scale(0.9) rotate(0deg); }
+  25% { transform: translate(-60%, 20%) scale(1.08) rotate(18deg); }
+  55% { transform: translate(30%, -10%) scale(0.96) rotate(-12deg); }
+  80% { transform: translate(-10%, 6%) scale(1.02) rotate(6deg); }
+  100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+}
+@keyframes intro-orbit-2 {
+  0% { transform: translate(120%, -60%) scale(1.1) rotate(0deg); }
+  20% { transform: translate(40%, -10%) scale(0.95) rotate(-14deg); }
+  55% { transform: translate(-25%, 18%) scale(1.06) rotate(10deg); }
+  85% { transform: translate(8%, -6%) scale(1.02) rotate(-5deg); }
+  100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+}
+@keyframes intro-orbit-3 {
+  0% { transform: translate(10%, 140%) scale(0.92) rotate(0deg); }
+  30% { transform: translate(-30%, 60%) scale(1.07) rotate(16deg); }
+  60% { transform: translate(18%, -20%) scale(0.98) rotate(-9deg); }
+  90% { transform: translate(-6%, 4%) scale(1.03) rotate(4deg); }
+  100% { transform: translate(0, 0) scale(1) rotate(0deg); }
+}
+
+.intro-ring-1 { animation: intro-orbit-1 2.8s ease-in-out forwards; }
+.intro-ring-2 { animation: intro-orbit-2 3.0s ease-in-out forwards; }
+.intro-ring-3 { animation: intro-orbit-3 3.2s ease-in-out forwards; }

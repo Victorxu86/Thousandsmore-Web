@@ -1,3 +1,4 @@
+"use client";
 export default function PricingPage() {
   return (
     <div className="min-h-screen p-8 sm:p-12 max-w-3xl mx-auto">

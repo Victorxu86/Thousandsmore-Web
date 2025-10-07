@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSupabaseServer } from "@/lib/supabase";
+import { getSupabaseServer } from "@/lib/supabaseServer";
 import { categories, getCategoryById, FREE_LIMIT_PER_CATEGORY } from "@/data/prompts";
 
 export async function GET(req: NextRequest) {

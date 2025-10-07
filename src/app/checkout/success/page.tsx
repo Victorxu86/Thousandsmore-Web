@@ -6,6 +6,13 @@ import Link from "next/link";
 function SuccessInner() {
   const sp = useSearchParams();
   const sid = sp.get("session_id");
+  async function claim() {
+    if (!sid) return;
+    try {
+      await fetch("/api/stripe/claim", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ session_id: sid }) });
+    } catch {}
+  }
+  if (sid) claim();
   return (
     <div className="min-h-screen p-8 max-w-xl mx-auto">
       <h1 className="text-2xl font-semibold mb-4">支付完成</h1>

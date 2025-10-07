@@ -1,8 +1,9 @@
 "use client";
+import { Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 
-export default function CheckoutSuccessPage() {
+function SuccessInner() {
   const sp = useSearchParams();
   const sid = sp.get("session_id");
   return (
@@ -17,6 +18,14 @@ export default function CheckoutSuccessPage() {
       )}
       <Link href="/" className="text-blue-600 hover:underline">返回首页</Link>
     </div>
+  );
+}
+
+export default function CheckoutSuccessPage() {
+  return (
+    <Suspense fallback={<div className="min-h-screen p-8 max-w-xl mx-auto opacity-70">加载中…</div>}>
+      <SuccessInner />
+    </Suspense>
   );
 }
 

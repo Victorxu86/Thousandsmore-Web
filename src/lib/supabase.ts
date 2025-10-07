@@ -15,30 +15,10 @@ export async function getSupabaseServer() {
   const cookieStore = await cookies();
   return createServerClient(url, anon, {
     cookies: {
-      get(name: string) {
-        return cookieStore.get(name)?.value;
-      },
-      set(name: string, value: string, options?: {
-        domain?: string;
-        path?: string;
-        expires?: Date;
-        httpOnly?: boolean;
-        secure?: boolean;
-        sameSite?: "lax" | "strict" | "none";
-        maxAge?: number;
-      }) {
-        cookieStore.set({ name, value, ...(options || {}) });
-      },
-      remove(name: string, options?: {
-        domain?: string;
-        path?: string;
-        expires?: Date;
-        httpOnly?: boolean;
-        secure?: boolean;
-        sameSite?: "lax" | "strict" | "none";
-        maxAge?: number;
-      }) {
-        cookieStore.set({ name, value: "", ...(options || {}), maxAge: 0 });
+      // @supabase/ssr 的 CookieMethodsServer 只要求 getAll（setAll 可选）
+      getAll() {
+        const all = cookieStore.getAll();
+        return all?.map((c) => ({ name: c.name, value: c.value })) ?? [];
       },
     },
   });

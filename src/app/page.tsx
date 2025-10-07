@@ -1,40 +1,56 @@
 import Link from "next/link";
-import { categories } from "@/data/prompts";
 
 export default function Home() {
   return (
-    <div className="min-h-screen p-8 sm:p-12 max-w-4xl mx-auto">
-      <header className="mb-8 flex items-center justify-between">
-        <h1 className="text-2xl font-semibold">Thousandsmore</h1>
-        <nav className="text-sm flex items-center gap-4">
-          <Link href="/pricing" className="hover:underline">定价</Link>
-          <a href="https://github.com" target="_blank" rel="noreferrer" className="hover:underline">GitHub</a>
-        </nav>
-      </header>
+    <main className="min-h-[calc(100vh-64px)] flex items-center justify-center">
+      <div className="relative w-full max-w-5xl mx-auto px-6">
+        <h1 className="text-3xl sm:text-4xl font-semibold text-center mb-8">Thousandsmore</h1>
 
-      <section className="mb-10">
-        <h2 className="text-xl font-medium mb-2">促进连接的问题与游戏</h2>
-        <p className="opacity-80">选择一个板块，点击开始并随机出题；体验版每个板块可游玩 15 次。</p>
-      </section>
-
-      <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {Object.values(categories).map((c) => (
-          <Link
-            key={c.id}
-            href={`/play/${c.id}`}
-            className="rounded-lg border p-5 hover:bg-black/5 dark:hover:bg-white/10 transition"
-          >
-            <div className="text-lg font-medium mb-1">{c.name}</div>
-            <div className="opacity-80 text-sm mb-3">{c.description}</div>
-            <div className="text-xs opacity-70">{c.allowedTypes.join(" / ")}</div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 items-center">
+          {/* 朋友（紫） */}
+          <Link href="/play/dating" className="group block">
+            <div className="relative mx-auto w-[220px] h-[220px] rounded-full border-2 border-purple-500/60 flex items-center justify-center overflow-hidden">
+              <div className="absolute inset-[-20%] rounded-full border-2 border-purple-500/40 wobble-spin" style={{ animationDuration: "6.5s" }} />
+              <div className="absolute inset-[-10%] rounded-full border-2 border-purple-500/60 wobble-spin" style={{ animationDuration: "7.3s", animationDelay: "-.6s" }} />
+              <div className="absolute inset-0 rounded-full border-2 border-purple-500 wobble-spin" style={{ animationDuration: "8.4s", animationDelay: "-.9s" }} />
+              <div className="relative text-center">
+                <div className="text-sm uppercase tracking-wide opacity-70 mb-1">朋友</div>
+                <div className="text-lg font-medium">开启话题</div>
+              </div>
+            </div>
           </Link>
-        ))}
-      </section>
 
-      <footer className="mt-12 text-xs opacity-70 leading-6">
-        <p>亲密与成人相关内容仅限成年人在自愿、合规、尊重边界的前提下使用。</p>
-        <p>© {new Date().getFullYear()} thousandsmore.com</p>
-      </footer>
-    </div>
+          {/* 酒桌（金） */}
+          <Link href="/play/party" className="group block">
+            <div className="relative mx-auto w-[220px] h-[220px] rounded-full border-2 border-yellow-500/60 flex items-center justify-center overflow-hidden">
+              <div className="absolute inset-[-20%] rounded-full border-2 border-yellow-500/40 wobble-spin" style={{ animationDuration: "6.8s" }} />
+              <div className="absolute inset-[-10%] rounded-full border-2 border-yellow-500/60 wobble-spin" style={{ animationDuration: "7.6s", animationDelay: "-.7s" }} />
+              <div className="absolute inset-0 rounded-full border-2 border-yellow-500 wobble-spin" style={{ animationDuration: "8.8s", animationDelay: "-1.1s" }} />
+              <div className="relative text-center">
+                <div className="text-sm uppercase tracking-wide opacity-70 mb-1">酒桌</div>
+                <div className="text-lg font-medium">真心话/大冒险</div>
+              </div>
+            </div>
+          </Link>
+
+          {/* 激情（艳红） */}
+          <Link href="/play/intimacy" className="group block">
+            <div className="relative mx-auto w-[220px] h-[220px] rounded-full border-2 border-rose-600/60 flex items-center justify-center overflow-hidden">
+              <div className="absolute inset-[-20%] rounded-full border-2 border-rose-600/40 wobble-spin" style={{ animationDuration: "6.2s" }} />
+              <div className="absolute inset-[-10%] rounded-full border-2 border-rose-600/60 wobble-spin" style={{ animationDuration: "7.1s", animationDelay: "-.4s" }} />
+              <div className="absolute inset-0 rounded-full border-2 border-rose-600 wobble-spin" style={{ animationDuration: "8.2s", animationDelay: "-.8s" }} />
+              <div className="relative text-center">
+                <div className="text-sm uppercase tracking-wide opacity-70 mb-1">激情</div>
+                <div className="text-lg font-medium">边界内探索</div>
+              </div>
+            </div>
+          </Link>
+        </div>
+
+        <p className="mt-10 text-center text-xs opacity-70">
+          点击圆圈进入不同玩法。成人相关内容仅限成年人在自愿、合规、尊重边界的前提下使用。
+        </p>
+      </div>
+    </main>
   );
 }

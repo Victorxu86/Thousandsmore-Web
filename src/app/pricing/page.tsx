@@ -16,7 +16,16 @@ export default function PricingPage() {
           <div className="text-2xl font-semibold mb-4">¥28.8</div>
           <button
             className="px-4 py-2 rounded border text-sm hover:bg-black/5 dark:hover:bg-white/10"
-            onClick={() => alert("支付集成稍后接入 Stripe，敬请期待")}
+            onClick={async () => {
+              try {
+                const res = await fetch("/api/stripe/checkout", { method: "POST" });
+                const data = await res.json();
+                if (data.url) window.location.href = data.url;
+                else alert(data.error || "无法创建结账会话");
+              } catch (e: any) {
+                alert(e?.message || "网络异常");
+              }
+            }}
           >
             购买
           </button>

@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
 
     // 若 webhook 尚未写入 token，则基于 Stripe 会话直签并落库
     if (!payload) {
-      const email = session.customer_details?.email || (session as any).customer_email || null;
+      const email = session.customer_details?.email ?? session.customer_email ?? null;
       const paid = session.payment_status === "paid" || session.status === "complete";
       if (!email || !paid) {
         return NextResponse.json({ error: "session not claimable" }, { status: 400 });

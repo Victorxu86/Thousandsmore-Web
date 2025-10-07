@@ -2,15 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import {
-  categories,
-  getCategoryById,
-  getPromptsByType,
-  getRandomPrompt,
-  FREE_LIMIT_PER_CATEGORY,
-  type Prompt,
-  type PromptType,
-} from "@/data/prompts";
+import { categories, getCategoryById, getPromptsByType, getRandomPrompt, type Prompt, type PromptType } from "@/data/prompts";
 
 type PageProps = {
   params: { category: string };
@@ -27,9 +19,16 @@ export default function PlayCategoryPage({ params }: PageProps) {
   const [usedCount, setUsedCount] = useState<number>(0);
 
   useEffect(() => {
-    const purchase = window.localStorage.getItem("tm_purchase_status");
-    setIsPro(purchase === "pro");
-  }, []);
+    // 从后端查询是否解锁，以及返回列表（后端会按 15 或全部控制）
+    async function fetchItems() {
+      if (!category) return;
+      const res = await fetch(`/api/prompts?category=${category.id}`);
+      const data = await res.json();
+      setIsPro(!!data.isPro);
+      // 仅用于展示体验版计数提示，不限制按钮（限制由后端返回数量控制）
+    }
+    fetchItems();
+  }, [category]);
 
   useEffect(() => {
     if (!category) return;
@@ -62,7 +61,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
   }
 
   const prompts = getPromptsByType(category, typeFilter);
-  const limitReached = !isPro && usedCount >= FREE_LIMIT_PER_CATEGORY;
+  const limitReached = false; // 由后端控制返回数量，这里不再本地限制
 
   function handleNext() {
     if (limitReached) return;
@@ -115,9 +114,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
             <div className="text-lg leading-relaxed whitespace-pre-wrap">{currentPrompt.text}</div>
 
             <div className="mt-6 flex items-center justify-between">
-              <div className="text-xs opacity-70">
-                {isPro ? "已解锁全部问题" : `体验版已用 ${usedCount}/${FREE_LIMIT_PER_CATEGORY}`}
-              </div>
+              <div className="text-xs opacity-70">{isPro ? "已解锁全部问题" : "体验版（最多 15 条/分类）"}</div>
               <div className="flex gap-3">
                 {!isPro && (
                   <button

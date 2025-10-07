@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getStripe } from "@/lib/stripe";
 import Stripe from "stripe";
+import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 export const runtime = "nodejs";
 
@@ -28,14 +29,42 @@ export async function POST(req: NextRequest) {
     switch (event.type) {
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-        // 这里后续将根据 session.customer_email / session.customer 关联用户并开通权益
-        // 现阶段先记录事件以便验证联通
-        console.log("Checkout completed:", {
-          id: session.id,
-          status: session.status,
-          customer: session.customer,
-          email: session.customer_details?.email || session.customer_email,
-        });
+        const email = session.customer_details?.email || session.customer_email || null;
+        if (email) {
+          const supabase = getSupabaseAdmin();
+          // 找用户（按 email）
+          const { data: users, error: userErr } = await supabase
+            .from("profiles")
+            .select("id, email")
+            .eq("email", email)
+            .limit(1);
+
+          let userId: string | null = null;
+          if (!userErr && users && users.length > 0) {
+            userId = users[0].id as string;
+          }
+
+          // 如果没有自建 profiles，可仅记录邮箱为外键字段（简化实现）
+          // 开通权益（以邮箱为键）
+          const { error: entErr } = await supabase
+            .from("entitlements")
+            .upsert({
+              email,
+              scope: "all",
+              unlocked: true,
+            }, { onConflict: "email" });
+
+          // 记录购买
+          await supabase.from("purchases").insert({
+            email,
+            stripe_checkout_session_id: session.id,
+            status: session.status ?? "completed",
+          });
+
+          if (entErr) {
+            console.warn("Entitlement upsert error", entErr);
+          }
+        }
         break;
       }
       default: {

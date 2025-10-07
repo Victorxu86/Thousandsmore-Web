@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import Link from "next/link";
+import dynamic from "next/dynamic";
+
+const AuthStatus = dynamic(() => import("@/components/AuthStatus"), { ssr: false });
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -27,6 +31,13 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        <header className="w-full max-w-5xl mx-auto flex items-center justify-between p-4">
+          <Link href="/" className="font-medium">Thousandsmore</Link>
+          <nav className="flex items-center gap-4 text-sm">
+            <Link href="/pricing" className="hover:underline">定价</Link>
+            <AuthStatus />
+          </nav>
+        </header>
         {children}
       </body>
     </html>

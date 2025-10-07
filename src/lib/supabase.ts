@@ -20,6 +20,11 @@ export async function getSupabaseServer() {
         const all = cookieStore.getAll();
         return all?.map((c) => ({ name: c.name, value: c.value })) ?? [];
       },
+      setAll(cookiesToSet) {
+        for (const c of cookiesToSet) {
+          cookieStore.set({ name: c.name, value: c.value, ...(c.options || {}) });
+        }
+      },
     },
   });
 }

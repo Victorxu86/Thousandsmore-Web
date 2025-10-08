@@ -17,7 +17,7 @@ export default function Home() {
   return (
     <main className="min-h-[calc(100vh-64px)] flex items-center justify-center">
       <div className="relative w-full max-w-5xl mx-auto px-6">
-        <h1 className={`text-3xl sm:text-4xl font-semibold text-center mb-8 -mt-24 sm:-mt-32 ${intro ? "intro-fade" : ""}`}>Thousands More</h1>
+        <h1 className={`fixed top-[25vh] left-1/2 -translate-x-1/2 text-3xl sm:text-4xl font-semibold text-center pointer-events-none z-10 ${intro ? "intro-fade" : ""}`}>Thousands More</h1>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 items-center">
           {/* 朋友（紫） */}

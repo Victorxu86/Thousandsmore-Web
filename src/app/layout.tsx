@@ -29,7 +29,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        <header className="w-full max-w-5xl mx-auto flex items-center justify-between p-4">
+        <header className="top-nav w-full max-w-5xl mx-auto flex items-center justify-between p-4">
           <Link href="/" className="font-medium">Thousandsmore</Link>
           <nav className="flex items-center gap-4 text-sm">
             <Link href="/pricing" className="hover:underline">定价</Link>

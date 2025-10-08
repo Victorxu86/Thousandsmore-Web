@@ -5,7 +5,12 @@ import { useEffect, useState } from "react";
 export default function Home() {
   const [intro, setIntro] = useState(true);
   useEffect(() => {
-    const t = setTimeout(() => setIntro(false), 3400);
+    // 动画期间隐藏导航
+    document.documentElement.classList.add("hide-nav");
+    const t = setTimeout(() => {
+      setIntro(false);
+      document.documentElement.classList.remove("hide-nav");
+    }, 3400);
     return () => clearTimeout(t);
   }, []);
 
@@ -55,7 +60,7 @@ export default function Home() {
           </Link>
         </div>
 
-        <p className="mt-10 text-center text-xs opacity-70">
+        <p className={`mt-10 text-center text-xs opacity-70 transition-opacity duration-500 ${intro ? "opacity-0" : "opacity-100"}`}>
           点击圆圈进入不同玩法。成人相关内容仅限成年人在自愿、合规、尊重边界的前提下使用。
         </p>
       </div>

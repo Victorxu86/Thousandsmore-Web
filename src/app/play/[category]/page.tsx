@@ -16,17 +16,30 @@ export default function PlayCategoryPage({ params }: PageProps) {
   const [currentPrompt, setCurrentPrompt] = useState<Prompt | null>(null);
   const [seenPromptIds, setSeenPromptIds] = useState<Set<string>>(new Set());
   const [isPro, setIsPro] = useState<boolean>(false);
+  const [topics, setTopics] = useState<string[]>([]);
+  const [activeTopic, setActiveTopic] = useState<string | null>(null);
 
   useEffect(() => {
     // 从后端查询是否解锁，以及返回列表（后端会按 15 或全部控制）
     async function fetchItems() {
       if (!category) return;
-      const res = await fetch(`/api/prompts?category=${category.id}`);
+      const q = new URLSearchParams({ category: category.id, ...(activeTopic ? { topic: activeTopic } : {}) });
+      const res = await fetch(`/api/prompts?${q.toString()}`);
       const data = await res.json();
       setIsPro(!!data.isPro);
       // 仅用于展示体验版计数提示，不限制按钮（限制由后端返回数量控制）
     }
     fetchItems();
+  }, [category, activeTopic]);
+
+  useEffect(() => {
+    async function fetchTopics() {
+      if (!category) return;
+      const res = await fetch(`/api/topics?category=${category.id}`);
+      const data = await res.json();
+      setTopics(data.topics || []);
+    }
+    fetchTopics();
   }, [category]);
 
   useEffect(() => {
@@ -88,6 +101,27 @@ export default function PlayCategoryPage({ params }: PageProps) {
       <div className="w-full max-w-2xl text-center">
         <h1 className="text-2xl font-semibold mb-2">{category.name}</h1>
         <p className="opacity-80 mb-4">{category.description}</p>
+
+        {/* 主题筛选：可视化 pill，默认“全部” */}
+        {topics.length > 0 && (
+          <div className="mb-4 flex flex-wrap justify-center gap-2">
+            <button
+              onClick={() => setActiveTopic(null)}
+              className={`px-3 py-1.5 rounded-full border text-sm ${!activeTopic ? "bg-black text-white dark:bg-white dark:text-black" : "hover:bg-black/5 dark:hover:bg-white/10"}`}
+            >
+              全部
+            </button>
+            {topics.map((t) => (
+              <button
+                key={t}
+                onClick={() => setActiveTopic(t)}
+                className={`px-3 py-1.5 rounded-full border text-sm ${activeTopic === t ? "bg-black text-white dark:bg白 dark:text-black" : "hover:bg黑/5 dark:hover:bg白/10"}`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        )}
 
         {allowedTypes.length > 1 && (
           <div className="inline-flex rounded border overflow-hidden mb-4">

@@ -1,11 +1,9 @@
 import { Category, CategoryId, Prompt, PromptType } from "@/data/types";
-import { philosophyCategory } from "@/data/philosophy";
 import { datingCategory } from "@/data/dating";
 import { intimacyCategory } from "@/data/intimacy";
 import { partyCategory } from "@/data/party";
 
 export const categories: Record<CategoryId, Category> = {
-  philosophy: philosophyCategory,
   dating: datingCategory,
   intimacy: intimacyCategory,
   party: partyCategory,

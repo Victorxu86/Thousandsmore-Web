@@ -1,4 +1,4 @@
-export type CategoryId = "philosophy" | "dating" | "intimacy" | "party";
+export type CategoryId = "dating" | "intimacy" | "party";
 
 export type PromptType = "question" | "truth" | "dare";
 

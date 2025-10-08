@@ -18,9 +18,9 @@ export async function GET(req: NextRequest) {
       .not("topic", "is", null)
       .order("topic");
     if (error) throw error;
-    const topics = Array.from(new Set((data || []).map((r: any) => r.topic))).filter(Boolean);
+    const topics = Array.from(new Set((data || []).map((r: { topic: string | null }) => r.topic))).filter(Boolean) as string[];
     return NextResponse.json({ topics });
-  } catch (e: unknown) {
+  } catch {
     return NextResponse.json({ topics: [] });
   }
 }

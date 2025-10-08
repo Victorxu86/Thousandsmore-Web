@@ -54,10 +54,11 @@ export async function GET(req: NextRequest) {
     const { data, error } = await proQuery.order("id");
     if (error) throw error;
     return NextResponse.json({ isPro, items: data || [] });
-  } catch (e: unknown) {
+  } catch {
     // 回退到内置题库，确保不因 DB 故障影响体验
     const category = categories[categoryId as keyof typeof categories];
-    const all = topic ? category.prompts.filter((p) => (p as any).topic === topic) : category.prompts;
+    // 内置题库未携带 topic 字段，这里忽略 topic 过滤
+    const all = category.prompts;
     const items = isPro ? all : all.slice(0, FREE_LIMIT_PER_CATEGORY);
     return NextResponse.json({ isPro, items, fallback: true });
   }

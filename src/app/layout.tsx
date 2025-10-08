@@ -3,6 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
 import AuthStatus from "@/components/AuthStatus";
+import Script from "next/script";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,6 +30,10 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
+        {/* 在首页首屏前隐藏导航，避免闪烁。使用 beforeInteractive 确保尽早执行 */}
+        <Script id="hide-nav-on-home" strategy="beforeInteractive">
+          {`try{if(typeof window!=='undefined'&&window.location&&window.location.pathname==='\/'){document.documentElement.classList.add('hide-nav');}}catch(e){}`}
+        </Script>
         <header className="top-nav w-full max-w-5xl mx-auto flex items-center justify-between p-4">
           <Link href="/" className="font-medium">Thousandsmore</Link>
           <nav className="flex items-center gap-4 text-sm">

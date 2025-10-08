@@ -17,7 +17,7 @@ export default function Home() {
   return (
     <main className="min-h-[calc(100vh-64px)] flex items-center justify-center">
       <div className="relative w-full max-w-5xl mx-auto px-6">
-        <h1 className={`text-3xl sm:text-4xl font-semibold text-center mb-8 -mt-2 ${intro ? "intro-fade" : ""}`}>Thousands More</h1>
+        <h1 className={`text-3xl sm:text-4xl font-semibold text-center mb-8 -mt-8 sm:-mt-10 ${intro ? "intro-fade" : ""}`}>Thousands More</h1>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 items-center">
           {/* 朋友（紫） */}
@@ -60,7 +60,7 @@ export default function Home() {
           </Link>
         </div>
 
-        <p className={`mt-10 text-center text-xs opacity-70 transition-opacity duration-500 ${intro ? "opacity-0" : "opacity-100"}`}>
+        <p className={`mt-10 text-center text-xs opacity-70 transition-opacity duration-400 ${intro ? "opacity-0" : "opacity-100"}`}>
           点击圆圈进入不同玩法。成人相关内容仅限成年人在自愿、合规、尊重边界的前提下使用。
         </p>
       </div>

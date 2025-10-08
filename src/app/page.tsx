@@ -23,6 +23,7 @@ export default function Home() {
           {/* 朋友（紫） */}
           <Link href="/play/dating" className="group block">
             <div className={`relative mx-auto w-[220px] h-[220px] rounded-full border-2 border-purple-500/60 flex items-center justify-center overflow-hidden ${intro ? "intro-ring-1" : ""}`}>
+              <div className="ring-breathe border-purple-500/70" />
               <div className="glow-layer glow-strong glow-purple" />
               <div className="glow-layer glow-purple" />
               <div className="absolute inset-[-20%] rounded-full border-2 border-purple-500/40 wobble-spin" style={{ animationDuration: "6.5s" }} />
@@ -38,6 +39,7 @@ export default function Home() {
           {/* 酒桌（金） */}
           <Link href="/play/party" className="group block">
             <div className={`relative mx-auto w-[220px] h-[220px] rounded-full border-2 border-yellow-500/60 flex items-center justify-center overflow-hidden ${intro ? "intro-ring-2" : ""}`}>
+              <div className="ring-breathe border-yellow-500/70" />
               <div className="glow-layer glow-strong glow-yellow" />
               <div className="glow-layer glow-yellow" />
               <div className="absolute inset-[-20%] rounded-full border-2 border-yellow-500/40 wobble-spin" style={{ animationDuration: "6.8s" }} />
@@ -53,6 +55,7 @@ export default function Home() {
           {/* 激情（艳红） */}
           <Link href="/play/intimacy" className="group block">
             <div className={`relative mx-auto w-[220px] h-[220px] rounded-full border-2 border-rose-600/60 flex items-center justify-center overflow-hidden ${intro ? "intro-ring-3" : ""}`}>
+              <div className="ring-breathe border-rose-600/70" />
               <div className="glow-layer glow-strong glow-rose" />
               <div className="glow-layer glow-rose" />
               <div className="absolute inset-[-20%] rounded-full border-2 border-rose-600/40 wobble-spin" style={{ animationDuration: "6.2s" }} />

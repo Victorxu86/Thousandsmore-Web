@@ -86,16 +86,16 @@ html.hide-nav .top-nav { opacity: 0; pointer-events: none; }
 .top-nav {
   border: 1px solid rgba(255,255,255,0.22);
   border-radius: 9999px;
-  background: rgba(255,255,255,0.06);
+  background: rgba(255,255,255,0.04); /* 更高透明度，降低灰度感 */
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   box-shadow: 0 4px 18px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.08);
 }
 @media (prefers-color-scheme: light) {
   .top-nav {
-    border-color: rgba(0,0,0,0.08);
-    background: rgba(255,255,255,0.7);
-    box-shadow: 0 6px 20px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.6);
+    border-color: rgba(0,0,0,0.06);
+    background: rgba(255,255,255,0.6);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.55);
   }
 }
 
@@ -106,3 +106,18 @@ html.hide-nav .top-nav { opacity: 0; pointer-events: none; }
 .glow-purple { background: radial-gradient(closest-side, rgba(168,85,247,.40), rgba(168,85,247,.18) 55%, transparent 70%); }
 .glow-yellow { background: radial-gradient(closest-side, rgba(234,179,8,.42), rgba(234,179,8,.2) 55%, transparent 70%); }
 .glow-rose { background: radial-gradient(closest-side, rgba(225,29,72,.42), rgba(225,29,72,.2) 55%, transparent 70%); }
+
+/* 外层线条呼吸动画（轻微扩张与透明度变化） */
+@keyframes stroke-breathe {
+  0% { transform: scale(1); opacity: .85; }
+  50% { transform: scale(1.04); opacity: 1; }
+  100% { transform: scale(1); opacity: .85; }
+}
+.ring-breathe {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  border-width: 2px;
+  animation: stroke-breathe 2.8s ease-in-out infinite;
+  pointer-events: none;
+}

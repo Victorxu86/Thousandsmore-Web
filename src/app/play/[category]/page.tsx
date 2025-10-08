@@ -2,7 +2,9 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { categories, getCategoryById, getPromptsByType, getRandomPrompt, type Prompt, type PromptType } from "@/data";
+import { categories, getCategoryById, getPromptsByType } from "@/data";
+import { getRandomPrompt } from "@/data/prompts";
+import type { Prompt, PromptType } from "@/data/types";
 
 type PageProps = {
   params: { category: string };
@@ -115,7 +117,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
               <button
                 key={t}
                 onClick={() => setActiveTopic(t)}
-                className={`px-3 py-1.5 rounded-full border text-sm ${activeTopic === t ? "bg-black text-white dark:bg白 dark:text-black" : "hover:bg黑/5 dark:hover:bg白/10"}`}
+                className={`px-3 py-1.5 rounded-full border text-sm ${activeTopic === t ? "bg-black text-white dark:bg-white dark:text-black" : "hover:bg-black/5 dark:hover:bg-white/10"}`}
               >
                 {t}
               </button>

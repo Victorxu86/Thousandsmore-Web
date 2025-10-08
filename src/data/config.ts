@@ -1,2 +1,2 @@
-export const FREE_LIMIT_PER_CATEGORY = 15;
+export const FREE_LIMIT_PER_CATEGORY = 10;
 

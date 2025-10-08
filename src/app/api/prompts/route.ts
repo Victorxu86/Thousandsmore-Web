@@ -29,9 +29,35 @@ export async function GET(req: NextRequest) {
     isPro = true;
   }
 
-  const category = categories[categoryId as keyof typeof categories];
-  const items = isPro ? category.prompts : category.prompts.slice(0, FREE_LIMIT_PER_CATEGORY);
-  return NextResponse.json({ isPro, items });
+  // 从数据库读取，非 Pro 仅返回 trial 题目
+  try {
+    const supabase = await getSupabaseServer();
+    if (!isPro) {
+      const { data, error } = await supabase
+        .from("prompts")
+        .select("id, text, type")
+        .eq("category_id", categoryId)
+        .eq("is_published", true)
+        .eq("is_trial", true)
+        .order("id")
+        .limit(FREE_LIMIT_PER_CATEGORY);
+      if (error) throw error;
+      return NextResponse.json({ isPro, items: data || [] });
+    }
+    const { data, error } = await supabase
+      .from("prompts")
+      .select("id, text, type")
+      .eq("category_id", categoryId)
+      .eq("is_published", true)
+      .order("id");
+    if (error) throw error;
+    return NextResponse.json({ isPro, items: data || [] });
+  } catch (e: unknown) {
+    // 回退到内置题库，确保不因 DB 故障影响体验
+    const category = categories[categoryId as keyof typeof categories];
+    const items = isPro ? category.prompts : category.prompts.slice(0, FREE_LIMIT_PER_CATEGORY);
+    return NextResponse.json({ isPro, items, fallback: true });
+  }
 }
 
 

@@ -7,7 +7,8 @@ import { FREE_LIMIT_PER_CATEGORY } from "@/data/config";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const categoryId = searchParams.get("category");
-  const topic = searchParams.get("topic");
+  const topicParam = searchParams.get("topics") || searchParams.get("topic");
+  const topics = topicParam ? topicParam.split(",").map((s) => s.trim()).filter(Boolean) : [];
   if (!categoryId || !getCategoryById(categoryId)) {
     return NextResponse.json({ error: "invalid category" }, { status: 400 });
   }
@@ -40,7 +41,7 @@ export async function GET(req: NextRequest) {
         .eq("category_id", categoryId)
         .eq("is_published", true)
         .eq("is_trial", true);
-      if (topic) query = query.eq("topic", topic);
+      if (topics.length > 0) query = query.in("topic", topics);
       const { data, error } = await query.order("id").limit(FREE_LIMIT_PER_CATEGORY);
       if (error) throw error;
       return NextResponse.json({ isPro, items: data || [] });
@@ -50,7 +51,7 @@ export async function GET(req: NextRequest) {
       .select("id, text, type, topic")
       .eq("category_id", categoryId)
       .eq("is_published", true);
-    if (topic) proQuery = proQuery.eq("topic", topic);
+    if (topics.length > 0) proQuery = proQuery.in("topic", topics);
     const { data, error } = await proQuery.order("id");
     if (error) throw error;
     return NextResponse.json({ isPro, items: data || [] });

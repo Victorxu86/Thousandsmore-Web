@@ -19,20 +19,21 @@ export default function PlayCategoryPage({ params }: PageProps) {
   const [seenPromptIds, setSeenPromptIds] = useState<Set<string>>(new Set());
   const [isPro, setIsPro] = useState<boolean>(false);
   const [topics, setTopics] = useState<string[]>([]);
-  const [activeTopic, setActiveTopic] = useState<string | null>(null);
+  const [activeTopics, setActiveTopics] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     // 从后端查询是否解锁，以及返回列表（后端会按 15 或全部控制）
     async function fetchItems() {
       if (!category) return;
-      const q = new URLSearchParams({ category: category.id, ...(activeTopic ? { topic: activeTopic } : {}) });
+      const q = new URLSearchParams({ category: category.id });
+      if (activeTopics.size > 0) q.set("topics", Array.from(activeTopics).join(","));
       const res = await fetch(`/api/prompts?${q.toString()}`);
       const data = await res.json();
       setIsPro(!!data.isPro);
       // 仅用于展示体验版计数提示，不限制按钮（限制由后端返回数量控制）
     }
     fetchItems();
-  }, [category, activeTopic]);
+  }, [category, activeTopics]);
 
   useEffect(() => {
     async function fetchTopics() {
@@ -101,27 +102,35 @@ export default function PlayCategoryPage({ params }: PageProps) {
       </div>
 
       <div className="w-full max-w-2xl text-center">
-        <h1 className="text-2xl font-semibold mb-2">{category.name}</h1>
-        <p className="opacity-80 mb-4">{category.description}</p>
+        <h1 className="text-2xl font-semibold mb-2">朋友</h1>
 
         {/* 主题筛选：可视化 pill，默认“全部” */}
         {topics.length > 0 && (
-          <div className="mb-4 flex flex-wrap justify-center gap-2">
+          <div className="mb-6 flex flex-wrap justify-center gap-2">
+            {/* 全部开关 */}
             <button
-              onClick={() => setActiveTopic(null)}
-              className={`px-3 py-1.5 rounded-full border text-sm ${!activeTopic ? "bg-black text-white dark:bg-white dark:text-black" : "hover:bg-black/5 dark:hover:bg-white/10"}`}
+              onClick={() => setActiveTopics(new Set())}
+              className={`px-3 py-1.5 rounded-full border text-sm ${activeTopics.size === 0 ? "bg-purple-600 text-white border-purple-600" : "hover:bg-black/5 dark:hover:bg-white/10"}`}
             >
               全部
             </button>
-            {topics.map((t) => (
-              <button
-                key={t}
-                onClick={() => setActiveTopic(t)}
-                className={`px-3 py-1.5 rounded-full border text-sm ${activeTopic === t ? "bg-black text-white dark:bg-white dark:text-black" : "hover:bg-black/5 dark:hover:bg-white/10"}`}
-              >
-                {t}
-              </button>
-            ))}
+            {topics.map((t) => {
+              const label = t === 'warmup' ? '热身' : t === 'connection' ? '连接' : t === 'deep' ? '哲学' : t === 'icebreaker' ? '破冰' : t === 'dare_fun' ? '挑战' : t === 'truth_chat' ? '真心话' : t === 'truth_basic' ? '真心话' : t === 'dare_soft' ? '轻冒险' : t;
+              const active = activeTopics.has(t);
+              return (
+                <button
+                  key={t}
+                  onClick={() => {
+                    const next = new Set(activeTopics);
+                    if (next.has(t)) next.delete(t); else next.add(t);
+                    setActiveTopics(next);
+                  }}
+                  className={`px-3 py-1.5 rounded-full border text-sm transition ${active ? "bg-purple-600 text-white border-purple-600" : "hover:bg-black/5 dark:hover:bg-white/10"}`}
+                >
+                  {label}
+                </button>
+              );
+            })}
           </div>
         )}
 
@@ -140,42 +149,35 @@ export default function PlayCategoryPage({ params }: PageProps) {
         )}
 
         {currentPrompt ? (
-          <div className="rounded-lg border p-6 text-left bg-background/60">
+          <div className="rounded-lg border border-purple-500/40 p-6 text-left bg-black/20 backdrop-blur-[2px] shadow-[0_8px_30px_rgba(88,28,135,0.25)]">
             <div className="text-xs uppercase tracking-wide opacity-70 mb-2">
               {currentPrompt.type === "question" ? "问题" : currentPrompt.type === "truth" ? "真心话" : "大冒险"}
             </div>
             <div className="text-lg leading-relaxed whitespace-pre-wrap">{currentPrompt.text}</div>
 
-            <div className="mt-6 flex items-center justify-between">
-              <div className="text-xs opacity-70">{isPro ? "已解锁全部问题" : "体验版（最多 15 条/分类）"}</div>
-              <div className="flex gap-3">
-                {!isPro && (
-                  <button
-                    onClick={handleUpgrade}
-                    className="px-3 py-2 rounded border hover:bg-black/5 dark:hover:bg-white/10 text-sm"
-                  >
-                    解锁全部
-                  </button>
-                )}
-                <button
-                  onClick={handleNext}
-                  disabled={limitReached}
-                  className={`px-3 py-2 rounded text-sm ${limitReached ? "opacity-50 cursor-not-allowed border" : "border hover:bg-black/5 dark:hover:bg-white/10"}`}
-                >
-                  下一个
-                </button>
-              </div>
-            </div>
+            <div className="mt-6 text-xs opacity-70">{isPro ? "已解锁全部问题" : "体验版（最多 10 条/分类）"}</div>
           </div>
         ) : (
           <div className="rounded-lg border p-6 opacity-70">暂无可用条目</div>
         )}
 
-        {limitReached && (
-          <div className="mt-4 text-sm text-red-600">
-            体验版已达上限，前往“解锁全部”获取无限次数。
-          </div>
-        )}
+        <div className="mt-6 flex items-center justify-center gap-3">
+          {!isPro && (
+            <button
+              onClick={handleUpgrade}
+              className="px-4 py-2 rounded-full border border-purple-500/60 text-sm hover:bg-purple-600/10 shadow-[0_2px_10px_rgba(168,85,247,0.25)]"
+            >
+              解锁全部
+            </button>
+          )}
+          <button
+            onClick={handleNext}
+            disabled={limitReached}
+            className={`px-4 py-2 rounded-full text-sm border border-purple-500/60 ${limitReached ? "opacity-50 cursor-not-allowed" : "hover:bg-purple-600/10 shadow-[0_2px_10px_rgba(168,85,247,0.25)]"}`}
+          >
+            下一个
+          </button>
+        </div>
       </div>
     </div>
   );

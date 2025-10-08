@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabaseServer";
 import { ENTITLEMENT_COOKIE, verifyEntitlement } from "@/lib/token";
-import { categories, getCategoryById, FREE_LIMIT_PER_CATEGORY } from "@/data/prompts";
+import { categories, getCategoryById } from "@/data";
+import { FREE_LIMIT_PER_CATEGORY } from "@/data/config";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);

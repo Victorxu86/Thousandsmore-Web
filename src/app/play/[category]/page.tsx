@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { categories, getCategoryById, getPromptsByType, getRandomPrompt, type Prompt, type PromptType } from "@/data/prompts";
+import { categories, getCategoryById, getPromptsByType, getRandomPrompt, type Prompt, type PromptType } from "@/data";
 
 type PageProps = {
   params: { category: string };

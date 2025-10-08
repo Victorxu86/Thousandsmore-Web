@@ -16,6 +16,9 @@ export default function Home() {
 
   return (
     <main className="min-h-[calc(100vh-64px)] flex items-center justify-center">
+      {intro && (
+        <style id="home-hide-nav">{`.top-nav{opacity:0;pointer-events:none;}`}</style>
+      )}
       <div className="relative w-full max-w-5xl mx-auto px-6">
         <h1 className={`fixed top-[25vh] left-1/2 -translate-x-1/2 text-3xl sm:text-4xl font-semibold text-center pointer-events-none z-10 ${intro ? "intro-fade" : ""}`}>Thousands More</h1>
 

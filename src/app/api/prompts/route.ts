@@ -7,6 +7,7 @@ import { FREE_LIMIT_PER_CATEGORY } from "@/data/config";
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const categoryId = searchParams.get("category");
+  const topic = searchParams.get("topic");
   if (!categoryId || !getCategoryById(categoryId)) {
     return NextResponse.json({ error: "invalid category" }, { status: 400 });
   }
@@ -33,29 +34,31 @@ export async function GET(req: NextRequest) {
   try {
     const supabase = await getSupabaseServer();
     if (!isPro) {
-      const { data, error } = await supabase
+      let query = supabase
         .from("prompts")
-        .select("id, text, type")
+        .select("id, text, type, topic")
         .eq("category_id", categoryId)
         .eq("is_published", true)
-        .eq("is_trial", true)
-        .order("id")
-        .limit(FREE_LIMIT_PER_CATEGORY);
+        .eq("is_trial", true);
+      if (topic) query = query.eq("topic", topic);
+      const { data, error } = await query.order("id").limit(FREE_LIMIT_PER_CATEGORY);
       if (error) throw error;
       return NextResponse.json({ isPro, items: data || [] });
     }
-    const { data, error } = await supabase
+    let proQuery = supabase
       .from("prompts")
-      .select("id, text, type")
+      .select("id, text, type, topic")
       .eq("category_id", categoryId)
-      .eq("is_published", true)
-      .order("id");
+      .eq("is_published", true);
+    if (topic) proQuery = proQuery.eq("topic", topic);
+    const { data, error } = await proQuery.order("id");
     if (error) throw error;
     return NextResponse.json({ isPro, items: data || [] });
   } catch (e: unknown) {
     // 回退到内置题库，确保不因 DB 故障影响体验
     const category = categories[categoryId as keyof typeof categories];
-    const items = isPro ? category.prompts : category.prompts.slice(0, FREE_LIMIT_PER_CATEGORY);
+    const all = topic ? category.prompts.filter((p) => (p as any).topic === topic) : category.prompts;
+    const items = isPro ? all : all.slice(0, FREE_LIMIT_PER_CATEGORY);
     return NextResponse.json({ isPro, items, fallback: true });
   }
 }

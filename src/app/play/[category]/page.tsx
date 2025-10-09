@@ -170,12 +170,18 @@ export default function PlayCategoryPage({ params }: PageProps) {
     window.location.href = "/pricing";
   }
 
-  const ready = hydrated && (topics.length > 0) && promptReady && ageConfirmed;
+  // 内容就绪（不含年龄确认）
+  const contentReady = hydrated && (topics.length > 0) && promptReady;
+  // 容器可见（内容就绪，或者激情页需要显示弹窗）
+  const containerVisible = contentReady || (category.id === "intimacy" && hydrated);
 
   return (
-    <div className={`min-h-screen p-6 flex flex-col items-center gap-6 transition-opacity duration-300 ${ready ? "opacity-100" : "opacity-0"}`}>
-      {/* 背景模糊遮罩（激情页在未确认前） */}
-      {(!ready || (category.id === "intimacy" && !ageConfirmed)) && (
+    <div className={`min-h-screen p-6 flex flex-col items-center gap-6 transition-opacity duration-300 ${containerVisible ? "opacity-100" : "opacity-0"}`}>
+      {/* 背景遮罩：内容未就绪 → 实色；激情未确认 → 磨砂 */}
+      {!contentReady && category.id !== "intimacy" && (
+        <div className="fixed inset-0 bg-background" />
+      )}
+      {category.id === "intimacy" && hydrated && !ageConfirmed && (
         <div className="fixed inset-0 bg-background/80 backdrop-blur-md" />
       )}
       <div className="w-full max-w-2xl flex items-center justify-between">
@@ -259,7 +265,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
                 <button
                   key={t}
                   onClick={() => setTypeFilter(t as ("all" | PromptType))}
-                  className={`px-4 py-2 text-sm rounded-xl transition ${selected ? selectedBg : unselected}`}
+                  className={`px-4 py-2 text-sm rounded-xl transition border ${selected ? `${selectedBg} ${theme.borderAccent}` : `border ${theme.borderAccent} ${unselected}`}`}
                 >
                   {t === "all" ? "混合" : t === "truth" ? "真心话" : "大冒险"}
                 </button>

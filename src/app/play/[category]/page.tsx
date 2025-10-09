@@ -21,6 +21,20 @@ export default function PlayCategoryPage({ params }: PageProps) {
   const [topics, setTopics] = useState<string[]>([]);
   const [activeTopics, setActiveTopics] = useState<Set<string>>(new Set());
 
+  // 预置主题，避免进入时“晚一拍”出现
+  const defaultTopics = useMemo(() => {
+    const map: Record<string, string[]> = {
+      dating: ["warmup", "connection", "deep"],
+      intimacy: ["truth_basic", "dare_soft", "boundaries"],
+      party: ["icebreaker", "dare_fun", "truth_chat"],
+    };
+    return category ? (map[category.id] ?? []) : [];
+  }, [category]);
+
+  useEffect(() => {
+    if (defaultTopics.length > 0) setTopics(defaultTopics);
+  }, [defaultTopics]);
+
   useEffect(() => {
     // 从后端查询是否解锁，以及返回列表（后端会按 10 或全部控制）
     async function fetchItems() {
@@ -39,7 +53,10 @@ export default function PlayCategoryPage({ params }: PageProps) {
       if (!category) return;
       const res = await fetch(`/api/topics?category=${category.id}`);
       const data = await res.json();
-      setTopics(data.topics || []);
+      const fetched: string[] = data.topics || [];
+      if (fetched.length === 0) return; // 使用预置即可
+      // 合并预置与后端，去重
+      setTopics((prev) => Array.from(new Set([...(prev.length ? prev : defaultTopics), ...fetched])));
     }
     fetchTopics();
   }, [category]);
@@ -115,7 +132,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
               全部
             </button>
             {topics.map((t) => {
-              const label = t === 'warmup' ? '热身' : t === 'connection' ? '连接' : t === 'deep' ? '哲学' : t === 'icebreaker' ? '破冰' : t === 'dare_fun' ? '挑战' : t === 'truth_chat' ? '真心话' : t === 'truth_basic' ? '真心话' : t === 'dare_soft' ? '轻冒险' : t;
+              const label = t === 'warmup' ? '热身' : t === 'connection' ? '连接' : t === 'deep' ? '哲学' : t === 'icebreaker' ? '破冰' : t === 'dare_fun' ? '挑战' : t === 'truth_chat' ? '真心话' : t === 'truth_basic' ? '真心话' : t === 'dare_soft' ? '轻冒险' : t === 'boundaries' ? '边界' : t;
               const active = activeTopics.has(t);
               return (
                 <button

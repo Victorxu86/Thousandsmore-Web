@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 type PromptRow = {
   id: string;
@@ -38,11 +38,17 @@ export default function AdminPage() {
       } else {
         setMessage(data.error || "加载失败");
       }
-    } catch (e: any) {
-      setMessage(e?.message || "网络错误");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setMessage(msg || "网络错误");
     } finally {
       setLoading(false);
     }
+  }
+
+  function normalizeType(value: string): PromptRow["type"] {
+    if (value === "truth" || value === "dare" || value === "question") return value;
+    return "question";
   }
 
   function parsePaste(text: string): PromptRow[] {
@@ -57,7 +63,7 @@ export default function AdminPage() {
       parsed.push({
         id,
         category_id,
-        type: (type as any),
+        type: normalizeType(type),
         text: textCol,
         is_published: true,
         is_trial: false,
@@ -75,8 +81,9 @@ export default function AdminPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "保存失败");
       setMessage(`已保存 ${data.count} 条`);
-    } catch (e: any) {
-      setMessage(e?.message || "网络错误");
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setMessage(msg || "网络错误");
     } finally {
       setLoading(false);
     }

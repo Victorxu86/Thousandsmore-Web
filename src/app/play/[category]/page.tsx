@@ -20,6 +20,13 @@ export default function PlayCategoryPage({ params }: PageProps) {
   const [isPro, setIsPro] = useState<boolean>(false);
   const [topics, setTopics] = useState<string[]>([]);
   const [activeTopics, setActiveTopics] = useState<Set<string>>(new Set());
+  const [hydrated, setHydrated] = useState(false);
+  const [promptReady, setPromptReady] = useState(false);
+
+  // 首次渲染完成标记，避免 SSR/CSR 切换闪烁
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
 
   // 预置主题，避免进入时“晚一拍”出现
   const defaultTopics = useMemo(() => {
@@ -67,6 +74,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
     const next = getRandomPrompt(prompts, undefined);
     setCurrentPrompt(next);
     setSeenPromptIds(new Set(next ? [next.id] : []));
+    setPromptReady(true);
   }, [category, typeFilter]);
 
   if (!category) {
@@ -108,8 +116,13 @@ export default function PlayCategoryPage({ params }: PageProps) {
     window.location.href = "/pricing";
   }
 
+  const ready = hydrated && (topics.length > 0) && promptReady;
+
   return (
-    <div className="min-h-screen p-6 flex flex-col items-center gap-6">
+    <div className={`min-h-screen p-6 flex flex-col items-center gap-6 transition-opacity duration-300 ${ready ? "opacity-100" : "opacity-0"}`}>
+      {!ready && (
+        <div className="fixed inset-0 bg-background" />
+      )}
       <div className="w-full max-w-2xl flex items-center justify-between">
         <Link href="/?noIntro=1" className="group inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-full border border-purple-500/60 hover:bg-purple-600/10 shadow-[0_2px_10px_rgba(168,85,247,0.25)] transition">
           <span className="inline-block w-0 h-0 border-t-4 border-b-4 border-r-6 border-t-transparent border-b-transparent border-r-purple-500/80"></span>

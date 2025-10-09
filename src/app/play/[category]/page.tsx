@@ -13,7 +13,7 @@ type PageProps = {
 export default function PlayCategoryPage({ params }: PageProps) {
   const category = useMemo(() => getCategoryById(params.category), [params.category]);
   const allowedTypes = category?.allowedTypes ?? ["question"];
-  const initialType: PromptType | "all" = allowedTypes.length === 1 ? allowedTypes[0] : "truth";
+  const initialType: PromptType | "all" = allowedTypes.length === 1 ? allowedTypes[0] : "all";
   const [typeFilter, setTypeFilter] = useState<PromptType | "all">(initialType);
   const [currentPrompt, setCurrentPrompt] = useState<Prompt | null>(null);
   const [seenPromptIds, setSeenPromptIds] = useState<Set<string>>(new Set());
@@ -182,7 +182,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
           <div className="mt-6 mb-8 flex flex-wrap justify-center gap-2">
             <button
               onClick={() => setActiveTopics(new Set())}
-              className={`px-3 py-1.5 rounded-full border text-sm ${activeTopics.size === 0 ? theme.selectedPill : "hover:bg-black/5 dark:hover:bg-white/10"}`}
+              className={`px-3 py-1.5 rounded-full border text-sm ${activeTopics.size === 0 ? theme.selectedPill : `${theme.borderAccent} ${theme.textAccent} ${theme.hoverAccentBg}`}`}
             >
               全部
             </button>
@@ -197,7 +197,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
                     if (next.has(t)) next.delete(t); else next.add(t);
                     setActiveTopics(next);
                   }}
-                  className={`px-3 py-1.5 rounded-full border text-sm transition ${active ? theme.selectedPill : "hover:bg-black/5 dark:hover:bg-white/10"}`}
+                  className={`px-3 py-1.5 rounded-full border text-sm transition ${active ? theme.selectedPill : `${theme.borderAccent} ${theme.textAccent} ${theme.hoverAccentBg}`}`}
                 >
                   {label}
                 </button>
@@ -207,14 +207,14 @@ export default function PlayCategoryPage({ params }: PageProps) {
         )}
 
         {allowedTypes.length > 1 && (
-          <div className="inline-flex rounded border overflow-hidden mb-6">
-            {(["truth", "dare"] as const).map((t) => (
+          <div className="inline-flex rounded-full overflow-hidden mb-6 border">
+            {(["all", "truth", "dare"] as const).map((t) => (
               <button
                 key={t}
-                onClick={() => setTypeFilter(t)}
-                className={`px-4 py-2 text-sm ${typeFilter === t ? "bg-black text-white dark:bg-white dark:text-black" : "hover:bg-black/5 dark:hover:bg-white/10"}`}
+                onClick={() => setTypeFilter(t as any)}
+                className={`px-4 py-2 text-sm border ${typeFilter === t ? theme.selectedPill : `${theme.borderAccent} ${theme.textAccent} ${theme.hoverAccentBg}`}`}
               >
-                {t === "truth" ? "真心话" : "大冒险"}
+                {t === "all" ? "混合" : t === "truth" ? "真心话" : "大冒险"}
               </button>
             ))}
           </div>

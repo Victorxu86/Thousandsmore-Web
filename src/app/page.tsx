@@ -82,7 +82,16 @@ export default function Home() {
           </Link>
         </div>
 
-        {/* 说明文字按需再添加；为避免进场期间可见，当前移除 */}
+        {/* 底部声明（进场结束后显示） */}
+        {!intro && (
+          <div className="mt-10 pb-6 text-center text-xs opacity-70">
+            使用本网站即表示您同意遵守并受我们的
+            <Link href="/terms" className="underline hover:opacity-90 mx-1">服务条款</Link>
+            与
+            <Link href="/privacy" className="underline hover:opacity-90 mx-1">隐私政策</Link>
+            的约束。成人相关内容仅面向已成年且自愿、合规、尊重边界的用户。
+          </div>
+        )}
       </div>
     </main>
   );

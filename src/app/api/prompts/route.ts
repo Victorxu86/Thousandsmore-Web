@@ -23,12 +23,15 @@ export async function GET(req: NextRequest) {
   let isPro = false;
   if (email) {
     // 简化：按邮箱查询权益（与 webhook 中的 upsert 保持一致字段）
-    const { data } = await supabase.from("entitlements").select("unlocked").eq("email", email).limit(1);
+    const { data } = await supabase.from("entitlements").select("unlocked,scope").eq("email", email).in("scope", ["all", categoryId]).order("scope").limit(1);
     isPro = !!(data && data[0]?.unlocked);
   }
   // Cookie 也可解锁
   if (!isPro && tokenPayload?.email) {
-    isPro = true;
+    // 校验令牌 scope
+    if ((tokenPayload as any).scope === "all" || (tokenPayload as any).scope === categoryId) {
+      isPro = true;
+    }
   }
 
   // 从数据库读取，非 Pro 仅返回 trial 题目

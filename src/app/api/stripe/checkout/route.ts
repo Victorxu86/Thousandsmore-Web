@@ -5,6 +5,7 @@ import Stripe from "stripe";
 type CheckoutRequestBody = {
   priceId?: string;
   lookupKey?: string;
+  scope?: "all" | "dating" | "party" | "intimacy";
 };
 
 export async function POST(req: NextRequest) {
@@ -40,6 +41,7 @@ export async function POST(req: NextRequest) {
       customer_creation: "always",
       customer_email: undefined,
       ui_mode: "hosted",
+      metadata: body.scope ? { scope: body.scope } : undefined,
     };
 
     const session = await stripe.checkout.sessions.create(params);

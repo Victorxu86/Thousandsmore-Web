@@ -34,14 +34,16 @@ export async function POST(req: NextRequest) {
         if (email) {
           const supabase = getSupabaseAdmin();
           // 简化：仅按邮箱落库权益与购买记录
-          // 开通权益（以邮箱为键）
+          // scope: 读取 session.metadata.scope（all/dating/party/intimacy），默认 all
+          const scope = (session.metadata?.scope as ("all"|"dating"|"party"|"intimacy")) || "all";
+          // 开通权益（以邮箱+scope 为键）
           const { error: entErr } = await supabase
             .from("entitlements")
             .upsert({
               email,
-              scope: "all",
+              scope,
               unlocked: true,
-            }, { onConflict: "email" });
+            }, { onConflict: "email,scope" });
 
           // 记录购买
           await supabase.from("purchases").insert({
@@ -55,7 +57,7 @@ export async function POST(req: NextRequest) {
           }
 
           // 生成短期签名（用于免登录认领），有效期 7 天
-          const token = signEntitlement({ email, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 7*24*3600 });
+          const token = signEntitlement({ email, scope, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 7*24*3600 });
           // 将 token 放到 session metadata（可选），供成功页认领
           try {
             await stripe.checkout.sessions.update(session.id, { metadata: { tm_token: token } });

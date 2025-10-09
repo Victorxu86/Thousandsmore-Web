@@ -20,8 +20,9 @@ export async function POST(req: NextRequest) {
       if (!email || !paid) {
         return NextResponse.json({ error: "session not claimable" }, { status: 400 });
       }
+      const scope = (session.metadata?.scope as ("all"|"dating"|"party"|"intimacy")) || "all";
       // 生成并回写 token（可选）
-      token = signEntitlement({ email, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 7*24*3600 });
+      token = signEntitlement({ email, scope, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 7*24*3600 });
       try {
         await stripe.checkout.sessions.update(session.id, { metadata: { ...(metadata || {}), tm_token: token } });
       } catch {}
@@ -30,15 +31,15 @@ export async function POST(req: NextRequest) {
         const supabase = getSupabaseAdmin();
         await supabase
           .from("entitlements")
-          .upsert({ email, scope: "all", unlocked: true }, { onConflict: "email" });
+          .upsert({ email, scope, unlocked: true }, { onConflict: "email,scope" });
         await supabase
           .from("purchases")
           .upsert({ email, stripe_checkout_session_id: session.id, status: session.status ?? "completed" }, { onConflict: "stripe_checkout_session_id" });
       } catch {}
-      payload = { email, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 7*24*3600 };
+      payload = { email, scope, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 7*24*3600 };
     }
 
-    const res = NextResponse.json({ ok: true, email: payload.email });
+    const res = NextResponse.json({ ok: true, email: payload.email, scope: payload.scope });
     res.cookies.set(ENTITLEMENT_COOKIE, token!, { httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 7*24*3600 });
     return res;
   } catch (e: unknown) {

@@ -1,7 +1,9 @@
 import crypto from "crypto";
 
+export type EntitlementScope = "all" | "dating" | "party" | "intimacy";
 export type EntitlementPayload = {
   email: string;
+  scope: EntitlementScope;
   iat: number; // issued at (seconds)
   exp: number; // expires at (seconds)
 };

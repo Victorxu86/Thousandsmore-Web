@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
-import AuthStatus from "@/components/AuthStatus";
 import Script from "next/script";
 
 const geistSans = Geist({
@@ -39,7 +38,6 @@ export default function RootLayout({
           <nav className="flex items-center gap-4 text-sm">
             <Link href="/pricing" className="hover:underline">定价</Link>
             <Link href="/restore" className="hover:underline">恢复购买</Link>
-            <AuthStatus />
           </nav>
         </header>
         {children}

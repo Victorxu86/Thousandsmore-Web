@@ -23,6 +23,48 @@ export default function PlayCategoryPage({ params }: PageProps) {
   const [hydrated, setHydrated] = useState(false);
   const [promptReady, setPromptReady] = useState(false);
 
+  const theme = useMemo(() => {
+    const id = category?.id;
+    if (id === "party") {
+      return {
+        textAccent: "text-yellow-200",
+        borderAccent: "border-yellow-500/60",
+        borderStrong: "border-yellow-500/70",
+        cardBorder: "border-yellow-500/40",
+        hoverAccentBg: "hover:bg-yellow-500/10",
+        arrowColor: "border-r-yellow-500/80",
+        shadowAccent: "shadow-[0_2px_10px_rgba(234,179,8,0.25)]",
+        cardShadow: "shadow-[0_8px_30px_rgba(234,179,8,0.25)]",
+        selectedPill: "bg-yellow-500 text-black border-yellow-500",
+      } as const;
+    }
+    if (id === "intimacy") {
+      return {
+        textAccent: "text-rose-200",
+        borderAccent: "border-rose-600/60",
+        borderStrong: "border-rose-600/70",
+        cardBorder: "border-rose-600/40",
+        hoverAccentBg: "hover:bg-rose-600/10",
+        arrowColor: "border-r-rose-600/80",
+        shadowAccent: "shadow-[0_2px_10px_rgba(225,29,72,0.25)]",
+        cardShadow: "shadow-[0_8px_30px_rgba(225,29,72,0.25)]",
+        selectedPill: "bg-rose-600 text-white border-rose-600",
+      } as const;
+    }
+    // dating (朋友) 默认紫色
+    return {
+      textAccent: "text-purple-200",
+      borderAccent: "border-purple-500/60",
+      borderStrong: "border-purple-500/70",
+      cardBorder: "border-purple-500/40",
+      hoverAccentBg: "hover:bg-purple-600/10",
+      arrowColor: "border-r-purple-500/80",
+      shadowAccent: "shadow-[0_2px_10px_rgba(168,85,247,0.25)]",
+      cardShadow: "shadow-[0_8px_30px_rgba(88,28,135,0.25)]",
+      selectedPill: "bg-purple-600 text-white border-purple-600",
+    } as const;
+  }, [category]);
+
   // 首次渲染完成标记，避免 SSR/CSR 切换闪烁
   useEffect(() => {
     setHydrated(true);
@@ -124,23 +166,23 @@ export default function PlayCategoryPage({ params }: PageProps) {
         <div className="fixed inset-0 bg-background" />
       )}
       <div className="w-full max-w-2xl flex items-center justify-between">
-        <Link href="/?noIntro=1" className="group inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-full border border-purple-500/60 hover:bg-purple-600/10 shadow-[0_2px_10px_rgba(168,85,247,0.25)] transition">
-          <span className="inline-block w-0 h-0 border-t-4 border-b-4 border-r-6 border-t-transparent border-b-transparent border-r-purple-500/80"></span>
-          <span className="text-purple-200 group-hover:text-white">返回</span>
+        <Link href="/?noIntro=1" className={`group inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-full border ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent} transition`}>
+          <span className={`inline-block w-0 h-0 border-t-4 border-b-4 border-r-6 border-t-transparent border-b-transparent ${theme.arrowColor}`}></span>
+          <span className={`${theme.textAccent} group-hover:text-white`}>返回</span>
         </Link>
         <div className="text-sm opacity-80" />
         <div />
       </div>
 
       <div className="w-full max-w-2xl text-center mt-10">
-        <h1 className="text-2xl font-semibold mb-2 text-purple-200">朋友</h1>
+        <h1 className={`text-2xl font-semibold mb-2 ${theme.textAccent}`}>{category.id === "party" ? "酒桌" : category.id === "intimacy" ? "激情" : "朋友"}</h1>
 
         {/* 主题筛选：可视化 pill，默认“全部”；下移排版 */}
         {topics.length > 0 && (
           <div className="mt-6 mb-8 flex flex-wrap justify-center gap-2">
             <button
               onClick={() => setActiveTopics(new Set())}
-              className={`px-3 py-1.5 rounded-full border text-sm ${activeTopics.size === 0 ? "bg-purple-600 text-white border-purple-600" : "hover:bg-black/5 dark:hover:bg-white/10"}`}
+              className={`px-3 py-1.5 rounded-full border text-sm ${activeTopics.size === 0 ? theme.selectedPill : "hover:bg-black/5 dark:hover:bg-white/10"}`}
             >
               全部
             </button>
@@ -155,7 +197,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
                     if (next.has(t)) next.delete(t); else next.add(t);
                     setActiveTopics(next);
                   }}
-                  className={`px-3 py-1.5 rounded-full border text-sm transition ${active ? "bg-purple-600 text-white border-purple-600" : "hover:bg-black/5 dark:hover:bg-white/10"}`}
+                  className={`px-3 py-1.5 rounded-full border text-sm transition ${active ? theme.selectedPill : "hover:bg-black/5 dark:hover:bg-white/10"}`}
                 >
                   {label}
                 </button>
@@ -179,7 +221,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
         )}
 
         {currentPrompt ? (
-          <div className="rounded-lg border border-purple-500/40 p-6 text-left bg-black/20 backdrop-blur-[2px] shadow-[0_8px_30px_rgba(88,28,135,0.25)] card-breathe mt-10">
+          <div className={`rounded-lg border ${theme.cardBorder} p-6 text-left bg-black/20 backdrop-blur-[2px] ${theme.cardShadow} card-breathe mt-10`}>
             <div className="text-xs uppercase tracking-wide opacity-70 mb-2">
               {currentPrompt.type === "question" ? "问题" : currentPrompt.type === "truth" ? "真心话" : "大冒险"}
             </div>
@@ -195,7 +237,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
           {!isPro && (
             <button
               onClick={handleUpgrade}
-              className="px-4 py-2 rounded-full border border-purple-500/60 text-sm hover:bg-purple-600/10 shadow-[0_2px_10px_rgba(168,85,247,0.25)]"
+              className={`px-4 py-2 rounded-full border ${theme.borderAccent} text-sm ${theme.hoverAccentBg} ${theme.shadowAccent}`}
             >
               解锁全部
             </button>
@@ -203,7 +245,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
           <button
             onClick={handleNext}
             disabled={limitReached}
-            className={`px-4 py-2 rounded-full text-sm border border-purple-500/60 ${limitReached ? "opacity-50 cursor-not-allowed" : "hover:bg-purple-600/10 shadow-[0_2px_10px_rgba(168,85,247,0.25)]"}`}
+            className={`px-4 py-2 rounded-full text-sm border ${theme.borderAccent} ${limitReached ? "opacity-50 cursor-not-allowed" : `${theme.hoverAccentBg} ${theme.shadowAccent}`}`}
           >
             下一个
           </button>

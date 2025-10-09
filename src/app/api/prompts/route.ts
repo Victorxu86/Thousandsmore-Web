@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
   // Cookie 也可解锁
   if (!isPro && tokenPayload?.email) {
     // 校验令牌 scope
-    if ((tokenPayload as any).scope === "all" || (tokenPayload as any).scope === categoryId) {
+    if (tokenPayload.scope === "all" || tokenPayload.scope === categoryId) {
       isPro = true;
     }
   }

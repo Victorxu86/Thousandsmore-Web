@@ -63,7 +63,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
       cardShadow: "shadow-[0_8px_30px_rgba(88,28,135,0.25)]",
       selectedPill: "bg-purple-600 text-white border-purple-600",
     } as const;
-  }, [category, defaultTopics]);
+  }, [category]);
 
   // 首次渲染完成标记，避免 SSR/CSR 切换闪烁
   useEffect(() => {
@@ -108,7 +108,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
       setTopics((prev) => Array.from(new Set([...(prev.length ? prev : defaultTopics), ...fetched])));
     }
     fetchTopics();
-  }, [category]);
+  }, [category, defaultTopics]);
 
   useEffect(() => {
     if (!category) return;

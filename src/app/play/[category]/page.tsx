@@ -22,6 +22,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
   const [activeTopics, setActiveTopics] = useState<Set<string>>(new Set());
   const [hydrated, setHydrated] = useState(false);
   const [promptReady, setPromptReady] = useState(false);
+  const [ageConfirmed, setAgeConfirmed] = useState<boolean>(false);
 
   const theme = useMemo(() => {
     const id = category?.id;
@@ -69,6 +70,17 @@ export default function PlayCategoryPage({ params }: PageProps) {
   useEffect(() => {
     setHydrated(true);
   }, []);
+
+  // 激情页一次性年龄确认（sessionStorage）
+  useEffect(() => {
+    if (category?.id !== "intimacy") {
+      setAgeConfirmed(true);
+      return;
+    }
+    let ok = false;
+    try { ok = sessionStorage.getItem("intimacy_age_ok") === "1"; } catch {}
+    setAgeConfirmed(ok);
+  }, [category?.id]);
 
   // 预置主题，避免进入时“晚一拍”出现
   const defaultTopics = useMemo(() => {
@@ -158,12 +170,13 @@ export default function PlayCategoryPage({ params }: PageProps) {
     window.location.href = "/pricing";
   }
 
-  const ready = hydrated && (topics.length > 0) && promptReady;
+  const ready = hydrated && (topics.length > 0) && promptReady && ageConfirmed;
 
   return (
     <div className={`min-h-screen p-6 flex flex-col items-center gap-6 transition-opacity duration-300 ${ready ? "opacity-100" : "opacity-0"}`}>
-      {!ready && (
-        <div className="fixed inset-0 bg-background" />
+      {/* 背景模糊遮罩（激情页在未确认前） */}
+      {(!ready || (category.id === "intimacy" && !ageConfirmed)) && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md" />
       )}
       <div className="w-full max-w-2xl flex items-center justify-between">
         <Link href="/?noIntro=1" className={`group inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-full border ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent} transition`}>
@@ -176,6 +189,32 @@ export default function PlayCategoryPage({ params }: PageProps) {
 
       <div className="w-full max-w-2xl text-center mt-10">
         <h1 className={`text-2xl font-semibold mb-2 ${theme.textAccent}`}>{category.id === "party" ? "酒桌" : category.id === "intimacy" ? "激情" : "朋友"}</h1>
+
+        {/* 激情页年龄确认弹窗 */}
+        {category.id === "intimacy" && hydrated && !ageConfirmed && (
+          <div className="fixed inset-0 flex items-center justify-center z-30">
+            <div className="modal-pop w-[92%] max-w-md rounded-xl border border-rose-600/60 bg-black/85 text-white p-5 shadow-[0_10px_40px_rgba(225,29,72,.35)]">
+              <h2 className="text-lg font-semibold mb-2">进入前的确认</h2>
+              <p className="text-sm opacity-80 leading-6">
+                本页面包含成人与敏感内容。仅限成年人在自愿、合规、尊重边界的前提下使用。
+              </p>
+              <div className="mt-4 flex items-center justify-end gap-3">
+                <button
+                  onClick={() => (window.location.href = "/?noIntro=1")}
+                  className="px-3 py-2 rounded-full text-sm border border-rose-600/60 hover:bg-rose-600/10"
+                >
+                  返回首页
+                </button>
+                <button
+                  onClick={() => { try { sessionStorage.setItem("intimacy_age_ok", "1"); } catch {}; setAgeConfirmed(true); }}
+                  className="px-4 py-2 rounded-full text-sm bg-rose-600 text-white hover:brightness-110"
+                >
+                  我已成年，继续
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* 主题筛选：可视化 pill，默认“全部”；下移排版 */}
         {topics.length > 0 && (

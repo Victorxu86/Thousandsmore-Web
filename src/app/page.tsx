@@ -5,11 +5,21 @@ import { useEffect, useState } from "react";
 export default function Home() {
   const [intro, setIntro] = useState(true);
   useEffect(() => {
+    const w = typeof window !== "undefined" ? window : null;
+    const noIntro = w ? new URLSearchParams(w.location.search).get("noIntro") === "1" : false;
+    let skip = false;
+    try { skip = w ? w.sessionStorage.getItem("introShown") === "1" : false; } catch {}
+    if (noIntro || skip) {
+      setIntro(false);
+      document.documentElement.classList.remove("hide-nav");
+      return;
+    }
     // 动画期间隐藏导航
     document.documentElement.classList.add("hide-nav");
     const t = setTimeout(() => {
       setIntro(false);
       document.documentElement.classList.remove("hide-nav");
+      try { w?.sessionStorage.setItem("introShown", "1"); } catch {}
     }, 3400);
     return () => clearTimeout(t);
   }, []);

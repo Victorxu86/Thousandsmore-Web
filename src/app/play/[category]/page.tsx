@@ -96,13 +96,18 @@ export default function PlayCategoryPage({ params }: PageProps) {
   return (
     <div className="min-h-screen p-6 flex flex-col items-center gap-6">
       <div className="w-full max-w-2xl flex items-center justify-between">
-        <Link href="/" className="text-sm text-blue-600 hover:underline">← 返回</Link>
-        <div className="text-sm opacity-80">{category.name}</div>
+        <Link href="/?noIntro=1" className="group inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-full border border-purple-500/60 hover:bg-purple-600/10 shadow-[0_2px_10px_rgba(168,85,247,0.25)] transition">
+          <span className="inline-block w-5 h-5 rounded-full border-2 border-purple-500/70 relative">
+            <span className="absolute inset-0 m-auto w-2.5 h-2.5 border-l-2 border-b-2 border-purple-500/80 rotate-45 -translate-x-[1px]"></span>
+          </span>
+          <span className="text-purple-200 group-hover:text-white">返回</span>
+        </Link>
+        <div className="text-sm opacity-80"></div>
         <div />
       </div>
 
       <div className="w-full max-w-2xl text-center">
-        <h1 className="text-2xl font-semibold mb-2">朋友</h1>
+        <h1 className="text-2xl font-semibold mb-2 text-purple-200">朋友</h1>
 
         {/* 主题筛选：可视化 pill，默认“全部” */}
         {topics.length > 0 && (

@@ -15,16 +15,23 @@ export async function GET(req: NextRequest) {
   const email = userData.user?.email;
   if (!email) return NextResponse.redirect(new URL(`/restore?error=no_email`, req.url));
 
-  // 查询是否已解锁
-  const { data } = await supabase.from("entitlements").select("unlocked").eq("email", email).limit(1);
-  const unlocked = !!(data && data[0]?.unlocked);
+  // 查询是否已解锁（按 scope）
+  const { data } = await supabase.from("entitlements").select("unlocked,scope").eq("email", email).eq("unlocked", true);
+  const unlocked = Array.isArray(data) && data.length > 0;
   if (!unlocked) {
     // 未找到购买记录，跳到定价提示
     return NextResponse.redirect(new URL(`/pricing?restore=not_found`, req.url));
   }
 
   // 下发 httpOnly 签名 Cookie，7 天有效
-  const token = signEntitlement({ email, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 7*24*3600 });
+  const hasAll = data?.some((r: { scope: string }) => r.scope === "all");
+  const preferredScope = hasAll
+    ? "all"
+    : (data?.find((r: { scope: string }) => r.scope === "dating")?.scope
+      || data?.find((r: { scope: string }) => r.scope === "party")?.scope
+      || data?.find((r: { scope: string }) => r.scope === "intimacy")?.scope
+      || "all");
+  const token = signEntitlement({ email, scope: preferredScope as any, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 7*24*3600 });
   const res = NextResponse.redirect(new URL(`/?restore=ok`, req.url));
   res.cookies.set(ENTITLEMENT_COOKIE, token, { httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 7*24*3600 });
   return res;

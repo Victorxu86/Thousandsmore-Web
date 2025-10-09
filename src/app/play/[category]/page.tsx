@@ -63,7 +63,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
       cardShadow: "shadow-[0_8px_30px_rgba(88,28,135,0.25)]",
       selectedPill: "bg-purple-600 text-white border-purple-600",
     } as const;
-  }, [category]);
+  }, [category, defaultTopics]);
 
   // 首次渲染完成标记，避免 SSR/CSR 切换闪烁
   useEffect(() => {
@@ -211,7 +211,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
             {(["all", "truth", "dare"] as const).map((t) => (
               <button
                 key={t}
-                onClick={() => setTypeFilter(t as any)}
+                onClick={() => setTypeFilter(t as ("all" | PromptType))}
                 className={`px-4 py-2 text-sm border ${typeFilter === t ? theme.selectedPill : `${theme.borderAccent} ${theme.textAccent} ${theme.hoverAccentBg}`}`}
               >
                 {t === "all" ? "混合" : t === "truth" ? "真心话" : "大冒险"}

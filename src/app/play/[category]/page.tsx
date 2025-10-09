@@ -22,7 +22,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
   const [activeTopics, setActiveTopics] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    // 从后端查询是否解锁，以及返回列表（后端会按 15 或全部控制）
+    // 从后端查询是否解锁，以及返回列表（后端会按 10 或全部控制）
     async function fetchItems() {
       if (!category) return;
       const q = new URLSearchParams({ category: category.id });
@@ -30,7 +30,6 @@ export default function PlayCategoryPage({ params }: PageProps) {
       const res = await fetch(`/api/prompts?${q.toString()}`);
       const data = await res.json();
       setIsPro(!!data.isPro);
-      // 仅用于展示体验版计数提示，不限制按钮（限制由后端返回数量控制）
     }
     fetchItems();
   }, [category, activeTopics]);
@@ -89,7 +88,6 @@ export default function PlayCategoryPage({ params }: PageProps) {
   }
 
   function handleUpgrade() {
-    // 占位：支付集成完成后将跳转到结账
     window.location.href = "/pricing";
   }
 
@@ -97,22 +95,19 @@ export default function PlayCategoryPage({ params }: PageProps) {
     <div className="min-h-screen p-6 flex flex-col items-center gap-6">
       <div className="w-full max-w-2xl flex items-center justify-between">
         <Link href="/?noIntro=1" className="group inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-full border border-purple-500/60 hover:bg-purple-600/10 shadow-[0_2px_10px_rgba(168,85,247,0.25)] transition">
-          <span className="inline-block w-5 h-5 rounded-full border-2 border-purple-500/70 relative">
-            <span className="absolute inset-0 m-auto w-2.5 h-2.5 border-l-2 border-b-2 border-purple-500/80 rotate-45 -translate-x-[1px]"></span>
-          </span>
+          <span className="inline-block w-0 h-0 border-t-4 border-b-4 border-r-6 border-t-transparent border-b-transparent border-r-purple-500/80"></span>
           <span className="text-purple-200 group-hover:text-white">返回</span>
         </Link>
-        <div className="text-sm opacity-80"></div>
+        <div className="text-sm opacity-80" />
         <div />
       </div>
 
-      <div className="w-full max-w-2xl text-center">
+      <div className="w-full max-w-2xl text-center mt-10">
         <h1 className="text-2xl font-semibold mb-2 text-purple-200">朋友</h1>
 
-        {/* 主题筛选：可视化 pill，默认“全部” */}
+        {/* 主题筛选：可视化 pill，默认“全部”；下移排版 */}
         {topics.length > 0 && (
-          <div className="mb-6 flex flex-wrap justify-center gap-2">
-            {/* 全部开关 */}
+          <div className="mt-6 mb-8 flex flex-wrap justify-center gap-2">
             <button
               onClick={() => setActiveTopics(new Set())}
               className={`px-3 py-1.5 rounded-full border text-sm ${activeTopics.size === 0 ? "bg-purple-600 text-white border-purple-600" : "hover:bg-black/5 dark:hover:bg-white/10"}`}
@@ -140,7 +135,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
         )}
 
         {allowedTypes.length > 1 && (
-          <div className="inline-flex rounded border overflow-hidden mb-4">
+          <div className="inline-flex rounded border overflow-hidden mb-6">
             {(["truth", "dare"] as const).map((t) => (
               <button
                 key={t}
@@ -154,7 +149,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
         )}
 
         {currentPrompt ? (
-          <div className="rounded-lg border border-purple-500/40 p-6 text-left bg-black/20 backdrop-blur-[2px] shadow-[0_8px_30px_rgba(88,28,135,0.25)]">
+          <div className="rounded-lg border border-purple-500/40 p-6 text-left bg-black/20 backdrop-blur-[2px] shadow-[0_8px_30px_rgba(88,28,135,0.25)] card-breathe mt-10">
             <div className="text-xs uppercase tracking-wide opacity-70 mb-2">
               {currentPrompt.type === "question" ? "问题" : currentPrompt.type === "truth" ? "真心话" : "大冒险"}
             </div>
@@ -163,10 +158,10 @@ export default function PlayCategoryPage({ params }: PageProps) {
             <div className="mt-6 text-xs opacity-70">{isPro ? "已解锁全部问题" : "体验版（最多 10 条/分类）"}</div>
           </div>
         ) : (
-          <div className="rounded-lg border p-6 opacity-70">暂无可用条目</div>
+          <div className="rounded-lg border p-6 opacity-70 mt-10">暂无可用条目</div>
         )}
 
-        <div className="mt-6 flex items-center justify-center gap-3">
+        <div className="mt-8 flex items-center justify-center gap-3">
           {!isPro && (
             <button
               onClick={handleUpgrade}

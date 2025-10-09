@@ -200,7 +200,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
               const thumbBg = category.id === "party" ? "bg-yellow-500" : category.id === "intimacy" ? "bg-rose-600" : "bg-purple-600";
               const selectedText = category.id === "party" ? "text-black" : "text-white";
               return (
-                <div className={`relative grid grid-cols-3 rounded-full border ${theme.borderAccent} bg-black/20 backdrop-blur-sm`} style={{ width: 160 }}>
+                <div className={`relative grid grid-cols-3 rounded-full border ${theme.borderAccent} bg-black/20 backdrop-blur-sm`} style={{ width: 180 }}>
                   <div className={`absolute top-0 bottom-0 rounded-full transition-transform duration-200 ease-out ${thumbBg}`} style={{ width: "33.3333%", transform: `translateX(${idx * 100}%)` }} />
                   {options.map((opt) => (
                     <button

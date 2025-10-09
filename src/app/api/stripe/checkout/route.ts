@@ -12,12 +12,20 @@ export async function POST(req: NextRequest) {
   try {
     const stripe = getStripe();
     const body = (await req.json().catch(() => ({}))) as CheckoutRequestBody;
+    const scope = (body.scope ?? "all") as NonNullable<CheckoutRequestBody["scope"]>;
 
-    // 1) 优先使用固定的 PRICE_ID；2) 其次用 body.priceId；3) 再用 lookup_key（env 或 body）去查询 Price
-    let resolvedPriceId: string | null = process.env.STRIPE_PRICE_ID || body.priceId || null;
+    // 映射函数：支持按 scope 读取环境变量 STRIPE_PRICE_ID_ALL / _DATING / _PARTY / _INTIMACY
+    function getScopedEnv(base: string, sc: string): string | undefined {
+      const key = `${base}_${sc.toUpperCase()}`;
+      return process.env[key];
+    }
+
+    // 1) 优先使用固定 PRICE_ID（全局或按 scope）；2) 其次 body.priceId；3) 再用 lookup_key（全局或按 scope 或 body）查询 Price
+    let resolvedPriceId: string | null =
+      getScopedEnv("STRIPE_PRICE_ID", scope) || process.env.STRIPE_PRICE_ID || body.priceId || null;
 
     if (!resolvedPriceId) {
-      const lookupKey = process.env.STRIPE_LOOKUP_KEY || body.lookupKey;
+      const lookupKey = getScopedEnv("STRIPE_LOOKUP_KEY", scope) || process.env.STRIPE_LOOKUP_KEY || body.lookupKey;
       if (!lookupKey) {
         return NextResponse.json({ error: "Missing price configuration" }, { status: 400 });
       }

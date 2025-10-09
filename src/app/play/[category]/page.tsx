@@ -207,16 +207,25 @@ export default function PlayCategoryPage({ params }: PageProps) {
         )}
 
         {allowedTypes.length > 1 && (
-          <div className="inline-flex rounded-full overflow-hidden mb-6 border">
-            {(["all", "truth", "dare"] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setTypeFilter(t as ("all" | PromptType))}
-                className={`px-4 py-2 text-sm border ${typeFilter === t ? theme.selectedPill : `${theme.borderAccent} ${theme.textAccent} ${theme.hoverAccentBg}`}`}
-              >
-                {t === "all" ? "混合" : t === "truth" ? "真心话" : "大冒险"}
-              </button>
-            ))}
+          <div className="flex items-center justify-center gap-2 mb-6">
+            {(["all", "truth", "dare"] as const).map((t) => {
+              const selected = typeFilter === t;
+              const selectedBg = category.id === "party"
+                ? "bg-yellow-500 text-black"
+                : category.id === "intimacy"
+                ? "bg-rose-600 text-white"
+                : "bg-purple-600 text-white"; // 朋友 (dating)
+              const unselected = `${theme.textAccent} ${theme.hoverAccentBg}`;
+              return (
+                <button
+                  key={t}
+                  onClick={() => setTypeFilter(t as ("all" | PromptType))}
+                  className={`px-4 py-2 text-sm rounded-xl transition ${selected ? selectedBg : unselected}`}
+                >
+                  {t === "all" ? "混合" : t === "truth" ? "真心话" : "大冒险"}
+                </button>
+              );
+            })}
           </div>
         )}
 

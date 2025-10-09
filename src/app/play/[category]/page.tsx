@@ -189,8 +189,31 @@ export default function PlayCategoryPage({ params }: PageProps) {
           <span className={`inline-block w-0 h-0 border-t-4 border-b-4 border-r-6 border-t-transparent border-b-transparent ${theme.arrowColor}`}></span>
           <span className={`${theme.textAccent} group-hover:text-white`}>返回</span>
         </Link>
-        <div className="text-sm opacity-80" />
-        <div />
+        <div className="flex-1" />
+        {allowedTypes.length > 1 && (
+          <div className="relative">
+            {(() => {
+              const options = ["all", "truth", "dare"] as const;
+              const idx = Math.max(0, options.indexOf((typeFilter as any)));
+              const thumbBg = category.id === "party" ? "bg-yellow-500" : category.id === "intimacy" ? "bg-rose-600" : "bg-purple-600";
+              const selectedText = category.id === "party" ? "text-black" : "text-white";
+              return (
+                <div className={`relative grid grid-cols-3 rounded-full border ${theme.borderAccent} bg-black/20 backdrop-blur-sm`} style={{ width: 240 }}>
+                  <div className={`absolute top-0 bottom-0 rounded-full transition-transform duration-200 ease-out ${thumbBg}`} style={{ width: "33.3333%", transform: `translateX(${idx * 100}%)` }} />
+                  {options.map((opt) => (
+                    <button
+                      key={opt}
+                      onClick={() => setTypeFilter(opt === "all" ? "all" : opt)}
+                      className={`relative z-10 px-3 py-1.5 text-sm transition-colors ${typeFilter === opt ? selectedText : theme.textAccent}`}
+                    >
+                      {opt === "all" ? "混合" : opt === "truth" ? "真心话" : "大冒险"}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+        )}
       </div>
 
       <div className="w-full max-w-2xl text-center mt-10">
@@ -251,28 +274,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
           </div>
         )}
 
-        {allowedTypes.length > 1 && (
-          <div className="flex items-center justify-center gap-2 mb-6">
-            {(["all", "truth", "dare"] as const).map((t) => {
-              const selected = typeFilter === t;
-              const selectedBg = category.id === "party"
-                ? "bg-yellow-500 text-black"
-                : category.id === "intimacy"
-                ? "bg-rose-600 text-white"
-                : "bg-purple-600 text-white"; // 朋友 (dating)
-              const unselected = `${theme.textAccent} ${theme.hoverAccentBg}`;
-              return (
-                <button
-                  key={t}
-                  onClick={() => setTypeFilter(t as ("all" | PromptType))}
-                  className={`px-4 py-2 text-sm rounded-xl transition border ${selected ? `${selectedBg} ${theme.borderAccent}` : `border ${theme.borderAccent} ${unselected}`}`}
-                >
-                  {t === "all" ? "混合" : t === "truth" ? "真心话" : "大冒险"}
-                </button>
-              );
-            })}
-          </div>
-        )}
+        {/* 顶部已提供分段滑动控件，这里移除中部切换 */}
 
         {currentPrompt ? (
           <div className={`rounded-lg border ${theme.cardBorder} p-6 text-left bg-black/20 backdrop-blur-[2px] ${theme.cardShadow} card-breathe mt-10`}>

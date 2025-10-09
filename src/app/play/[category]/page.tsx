@@ -194,7 +194,9 @@ export default function PlayCategoryPage({ params }: PageProps) {
           <div className="relative">
             {(() => {
               const options = ["all", "truth", "dare"] as const;
-              const idx = Math.max(0, options.indexOf((typeFilter as any)));
+              const current: "all" | "truth" | "dare" =
+                typeFilter === "truth" || typeFilter === "dare" ? typeFilter : "all";
+              const idx = Math.max(0, options.indexOf(current));
               const thumbBg = category.id === "party" ? "bg-yellow-500" : category.id === "intimacy" ? "bg-rose-600" : "bg-purple-600";
               const selectedText = category.id === "party" ? "text-black" : "text-white";
               return (

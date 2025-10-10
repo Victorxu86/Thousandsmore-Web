@@ -13,12 +13,24 @@ export default function PricingPage() {
 
       <h1 className="text-2xl font-semibold mb-4 text-purple-200">定价</h1>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* 单分类解锁：8.8 */}
-        {[{ id: "dating", name: "朋友" }, { id: "party", name: "酒桌" }, { id: "intimacy", name: "激情" }].map((c) => (
+        {/* 单分类解锁：显示原价（删线）+ 促销价 */}
+        {[
+          { id: "dating", name: "Deeptalk", old: 8.8, now: 2.8 },
+          { id: "party", name: "酒桌", old: 8.8, now: 4.8 },
+          { id: "intimacy", name: "激情", old: 8.8, now: 8.8 },
+        ].map((c) => (
           <div key={c.id} className="rounded-lg border border-purple-500/40 p-6 bg-black/20 backdrop-blur-[2px] shadow-[0_8px_30px_rgba(88,28,135,0.25)]">
             <div className="text-lg font-medium mb-2">解锁 {c.name}</div>
-            <div className="opacity-80 mb-4">该分类无限次数与完整题库</div>
-            <div className="text-2xl font-semibold mb-4">¥8.8</div>
+            <div className="opacity-80 mb-3">该分类无限次数与完整题库</div>
+            <div className="flex items-baseline gap-3 mb-4">
+              {c.old !== c.now && (
+                <span className="text-sm line-through opacity-60">¥{c.old.toFixed(1)}</span>
+              )}
+              <span className="text-2xl font-semibold">¥{c.now.toFixed(1)}</span>
+              {c.old !== c.now && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full border border-purple-500/60 opacity-80">限时</span>
+              )}
+            </div>
             <button
               className="px-4 py-2 rounded-full border border-purple-500/60 text-sm hover:bg-purple-600/10"
               onClick={async () => {
@@ -37,11 +49,15 @@ export default function PricingPage() {
           </div>
         ))}
 
-        {/* 全部解锁：18.8 */}
+        {/* 全部解锁：原 18.8 → 12.8 */}
         <div className="rounded-lg border border-purple-500/40 p-6 bg-black/20 backdrop-blur-[2px] shadow-[0_8px_30px_rgba(88,28,135,0.25)]">
           <div className="text-lg font-medium mb-2">全部解锁</div>
-          <div className="opacity-80 mb-4">一次购买，解锁全部分类与次数限制</div>
-          <div className="text-2xl font-semibold mb-4">¥18.8</div>
+          <div className="opacity-80 mb-3">一次购买，解锁全部分类与次数限制</div>
+          <div className="flex items-baseline gap-3 mb-4">
+            <span className="text-sm line-through opacity-60">¥18.8</span>
+            <span className="text-2xl font-semibold">¥12.8</span>
+            <span className="text-[10px] px-2 py-0.5 rounded-full border border-purple-500/60 opacity-80">限时</span>
+          </div>
           <button
             className="px-4 py-2 rounded-full border border-purple-500/60 text-sm hover:bg-purple-600/10"
             onClick={async () => {

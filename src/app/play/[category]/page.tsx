@@ -84,10 +84,11 @@ export default function PlayCategoryPage({ params }: PageProps) {
 
   // 预置主题，避免进入时“晚一拍”出现
   const defaultTopics = useMemo(() => {
+    // 与数据库当前 topic 值保持一致（中文键），避免与接口返回合并时重复
     const map: Record<string, string[]> = {
-      dating: ["warmup", "connection", "deep"],
-      intimacy: ["truth_basic", "dare_soft", "boundaries"],
-      party: ["icebreaker", "dare_fun", "truth_chat"],
+      dating: ["了解", "升温", "哲学"],
+      intimacy: ["轻松", "热情", "极限"],
+      party: ["破冰", "八卦", "找乐子"],
     };
     return category ? (map[category.id] ?? []) : [];
   }, [category]);
@@ -260,6 +261,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
               全部
             </button>
             {topics.map((t) => {
+              // 兼容老的英文键，但首选中文键原样显示
               const label =
                 t === 'warmup' ? '了解' :
                 t === 'connection' ? '升温' :

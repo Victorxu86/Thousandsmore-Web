@@ -276,6 +276,16 @@ export default function PlayCategoryPage({ params }: PageProps) {
                 t === 'truth_basic' ? '轻松' :
                 t === 'dare_soft' ? '热情' :
                 t === 'boundaries' ? '极限' : t;
+              const labelEn =
+                t === 'warmup' ? 'Know you' :
+                t === 'connection' ? 'Warm up' :
+                t === 'deep' ? 'Philosophy' :
+                t === 'icebreaker' ? 'Icebreaker' :
+                t === 'truth_chat' ? 'Gossip' :
+                t === 'dare_fun' ? 'For fun' :
+                t === 'truth_basic' ? 'Easy' :
+                t === 'dare_soft' ? 'Passion' :
+                t === 'boundaries' ? 'Extreme' : t;
               const active = activeTopics.has(t);
               return (
                 <button
@@ -287,7 +297,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
                   }}
                   className={`px-3 py-1.5 rounded-full border text-sm transition ${active ? theme.selectedPill : `${theme.borderAccent} ${theme.textAccent} ${theme.hoverAccentBg}`}`}
                 >
-                  {label}
+                  {lang === 'en' ? labelEn : label}
                 </button>
               );
             })}

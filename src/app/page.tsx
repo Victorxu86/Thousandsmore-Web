@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 export default function Home() {
   const [intro, setIntro] = useState(true);
   const lang = useLang();
+  const [showLang, setShowLang] = useState(false);
   useEffect(() => {
     const w = typeof window !== "undefined" ? window : null;
     const noIntro = w ? new URLSearchParams(w.location.search).get("noIntro") === "1" : false;
@@ -25,6 +26,16 @@ export default function Home() {
     }, 3400);
     return () => clearTimeout(t);
   }, []);
+
+  // 进场结束后弹一次语言选择（会话内只显示一次）
+  useEffect(() => {
+    if (!intro) {
+      try {
+        const shown = sessionStorage.getItem("langPromptShown") === "1";
+        if (!shown) setShowLang(true);
+      } catch {}
+    }
+  }, [intro]);
 
   return (
     <main className="min-h-[calc(100vh-64px)] flex items-center justify-center">
@@ -86,25 +97,38 @@ export default function Home() {
           </Link>
         </div>
 
-        {/* 语言选择弹窗（进场结束后出现一次） */}
-        {!intro && (
-          <div className="fixed inset-0 z-20 flex items-center justify-center px-4 sm:px-0">
-            <div className="modal-pop w-full max-w-sm rounded-xl border border-white/15 bg-black/85 text-white p-5 shadow-[0_10px_40px_rgba(0,0,0,.35)]">
-              <h2 className="text-lg font-semibold mb-2">{lang === "en" ? "Language / 语言" : "语言选择 / Language"}</h2>
-              <p className="text-sm opacity-80 leading-6 mb-4">{lang === "en" ? "Choose your preferred language. You can change it anytime in the top-right." : "请选择偏好的语言（右上角可随时切换）。"}</p>
-              <div className="flex items-center gap-3 justify-end">
-                <button onClick={() => setLang("zh")} className="px-3 py-2 rounded-full border hover:bg-white/10">中文</button>
-                <button onClick={() => setLang("en")} className="px-3 py-2 rounded-full border hover:bg-white/10">English</button>
-                <button onClick={() => {
-                  const el = document.querySelector('#lang-once');
-                  if (el) el.remove();
-                  const overlay = document.getElementById('lang-overlay');
-                  if (overlay) overlay.remove();
-                }} className="px-3 py-2 rounded-full bg-white text-black">{lang === "en" ? "Continue" : "继续"}</button>
+        {/* 语言选择弹窗（进场结束后出现一次；不阻塞页面点击） */}
+        {showLang && (
+          <div className="fixed inset-0 z-20 flex items-center justify-center px-4 sm:px-0 pointer-events-none">
+            {/* 半透明覆盖，但不拦截点击 */}
+            <div className="absolute inset-0 bg-black/35 pointer-events-none" />
+            {/* 三色渐变描边卡片 */}
+            <div className="relative pointer-events-auto modal-pop w-full max-w-sm p-[1px] rounded-2xl bg-gradient-to-r from-purple-500 via-yellow-400 to-rose-600 shadow-[0_10px_40px_rgba(0,0,0,.35)]">
+              <div className="rounded-2xl bg-black/90 text-white p-5">
+                <div className="flex items-start justify-between">
+                  <h2 className="text-lg font-semibold mb-2">{lang === "en" ? "Language / 语言" : "语言选择 / Language"}</h2>
+                  <button
+                    onClick={() => { try { sessionStorage.setItem("langPromptShown", "1"); } catch {}; setShowLang(false); }}
+                    className="-mt-1 -mr-1 px-2 py-1 rounded-full text-sm opacity-80 hover:opacity-100 border border-white/20"
+                  >×</button>
+                </div>
+                <p className="text-sm opacity-80 leading-6 mb-4">{lang === "en" ? "Choose your preferred language. You can change it anytime in the top-right." : "请选择偏好的语言（右上角可随时切换）。"}</p>
+                {/* 分段式按钮 */}
+                <div className="relative grid grid-cols-2 rounded-full border border-white/20 bg-white/5 p-0.5 mb-4">
+                  <div className={`absolute inset-y-0 w-1/2 rounded-full transition-transform duration-200 ease-out ${lang === "en" ? "translate-x-full" : "translate-x-0"} ${lang === "en" ? "bg-rose-600/70" : "bg-purple-600/70"}`} />
+                  <button onClick={() => { setLang("zh"); try { sessionStorage.setItem("langPromptShown", "1"); } catch {}; setShowLang(false); }} className={`relative z-10 px-3 py-1.5 text-sm ${lang === "en" ? "text-white/80 hover:text-white" : "text-black font-medium"}`}>中文</button>
+                  <button onClick={() => { setLang("en"); try { sessionStorage.setItem("langPromptShown", "1"); } catch {}; setShowLang(false); }} className={`relative z-10 px-3 py-1.5 text-sm ${lang === "en" ? "text-black font-medium" : "text-white/80 hover:text-white"}`}>English</button>
+                </div>
+                <div className="flex items-center justify-end">
+                  <button
+                    onClick={() => { try { sessionStorage.setItem("langPromptShown", "1"); } catch {}; setShowLang(false); }}
+                    className="px-3 py-2 rounded-full bg-white text-black hover:brightness-95"
+                  >
+                    {lang === "en" ? "Continue" : "继续"}
+                  </button>
+                </div>
               </div>
             </div>
-            <div id="lang-overlay" className="absolute inset-0 bg-black/60" />
-            <div id="lang-once" />
           </div>
         )}
 

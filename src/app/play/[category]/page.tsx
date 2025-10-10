@@ -19,6 +19,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
   const [currentPrompt, setCurrentPrompt] = useState<Prompt | null>(null);
   const [seenPromptIds, setSeenPromptIds] = useState<Set<string>>(new Set());
   const [isPro, setIsPro] = useState<boolean>(false);
+  const [remoteItems, setRemoteItems] = useState<Array<{ id: string; type: PromptType; text: string; topic?: string | null }>>([]);
   const [topics, setTopics] = useState<string[]>([]);
   const [activeTopics, setActiveTopics] = useState<Set<string>>(new Set());
   const [hydrated, setHydrated] = useState(false);
@@ -103,14 +104,16 @@ export default function PlayCategoryPage({ params }: PageProps) {
     // 从后端查询是否解锁，以及返回列表（后端会按 10 或全部控制）
     async function fetchItems() {
       if (!category) return;
-      const q = new URLSearchParams({ category: category.id });
+      const q = new URLSearchParams({ category: category.id, lang });
       if (activeTopics.size > 0) q.set("topics", Array.from(activeTopics).join(","));
       const res = await fetch(`/api/prompts?${q.toString()}`);
       const data = await res.json();
       setIsPro(!!data.isPro);
+      const items = Array.isArray(data.items) ? data.items : [];
+      setRemoteItems(items as Array<{ id: string; type: PromptType; text: string; topic?: string | null }>);
     }
     fetchItems();
-  }, [category, activeTopics]);
+  }, [category, activeTopics, lang]);
 
   useEffect(() => {
     async function fetchTopics() {
@@ -127,12 +130,13 @@ export default function PlayCategoryPage({ params }: PageProps) {
 
   useEffect(() => {
     if (!category) return;
-    const prompts = getPromptsByType(category, typeFilter);
-    const next = getRandomPrompt(prompts, undefined);
-    setCurrentPrompt(next);
+    const source = remoteItems.length > 0 ? remoteItems : getPromptsByType(category, typeFilter);
+    const filtered = typeFilter === "all" ? source : source.filter((p) => p.type === typeFilter);
+    const next = getRandomPrompt(filtered as Prompt[], undefined);
+    setCurrentPrompt(next || null);
     setSeenPromptIds(new Set(next ? [next.id] : []));
     setPromptReady(true);
-  }, [category, typeFilter]);
+  }, [category, typeFilter, remoteItems]);
 
   if (!category) {
     return (
@@ -155,7 +159,10 @@ export default function PlayCategoryPage({ params }: PageProps) {
     );
   }
 
-  const prompts = getPromptsByType(category, typeFilter);
+  const prompts = ((): Prompt[] => {
+    const source = remoteItems.length > 0 ? remoteItems : getPromptsByType(category, typeFilter);
+    return (typeFilter === "all" ? source : source.filter((p) => p.type === typeFilter)) as Prompt[];
+  })();
   const limitReached = false; // 由后端控制返回数量，这里不再本地限制
 
   function handleNext() {

@@ -3,21 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
 import Script from "next/script";
-
-function LangToggleClient() {
-  "use client";
-  const { useLang, setLang } = require("@/lib/lang");
-  const lang = useLang();
-  return (
-    <nav className="flex items-center gap-4 text-sm">
-      <Link href="/pricing" className="hover:underline">{lang === "en" ? "Pricing" : "定价"}</Link>
-      <Link href="/restore" className="hover:underline">{lang === "en" ? "Restore" : "恢复购买"}</Link>
-      <button onClick={() => setLang(lang === "en" ? "zh" : "en")} className="px-3 py-1 rounded-full border hover:bg-black/5">
-        {lang === "en" ? "中 / En" : "中 / En"}
-      </button>
-    </nav>
-  );
-}
+import LangToggle from "@/components/LangToggle";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -29,14 +15,8 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const geistSans = Geist({
-    variable: "--font-geist-sans",
-    subsets: ["latin"],
-  });
-  const geistMono = Geist_Mono({
-    variable: "--font-geist-mono",
-    subsets: ["latin"],
-  });
+  const geistSans = Geist({ variable: "--font-geist-sans", subsets: ["latin"] });
+  const geistMono = Geist_Mono({ variable: "--font-geist-mono", subsets: ["latin"] });
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
@@ -46,9 +26,7 @@ export default function RootLayout({
         </Script>
         <header className="top-nav w-full max-w-5xl mx-auto flex items-center justify-between p-4">
           <Link href="/" className="font-medium">Thousandsmore</Link>
-          { /* 客户端语言切换 */ }
-          { /* @ts-expect-error Server Component embedding client */ }
-          <LangToggleClient />
+          <LangToggle />
         </header>
         {children}
       </body>

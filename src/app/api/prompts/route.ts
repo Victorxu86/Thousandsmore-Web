@@ -9,6 +9,7 @@ export async function GET(req: NextRequest) {
   const categoryId = searchParams.get("category");
   const topicParam = searchParams.get("topics") || searchParams.get("topic");
   const topics = topicParam ? topicParam.split(",").map((s) => s.trim()).filter(Boolean) : [];
+  const lang = (searchParams.get("lang") === "en" ? "en" : "zh");
   if (!categoryId || !getCategoryById(categoryId)) {
     return NextResponse.json({ error: "invalid category" }, { status: 400 });
   }
@@ -40,24 +41,26 @@ export async function GET(req: NextRequest) {
     if (!isPro) {
       let query = supabase
         .from("prompts")
-        .select("id, text, type, topic")
+        .select("id, text, text_en, type, topic")
         .eq("category_id", categoryId)
         .eq("is_published", true)
         .eq("is_trial", true);
       if (topics.length > 0) query = query.in("topic", topics);
       const { data, error } = await query.order("id").limit(FREE_LIMIT_PER_CATEGORY);
       if (error) throw error;
-      return NextResponse.json({ isPro, items: data || [] });
+      const items = (data || []).map((r: any) => ({ id: r.id, type: r.type, topic: r.topic, text: lang === "en" ? (r.text_en || r.text) : r.text }));
+      return NextResponse.json({ isPro, items });
     }
     let proQuery = supabase
       .from("prompts")
-      .select("id, text, type, topic")
+      .select("id, text, text_en, type, topic")
       .eq("category_id", categoryId)
       .eq("is_published", true);
     if (topics.length > 0) proQuery = proQuery.in("topic", topics);
     const { data, error } = await proQuery.order("id");
     if (error) throw error;
-    return NextResponse.json({ isPro, items: data || [] });
+    const items = (data || []).map((r: any) => ({ id: r.id, type: r.type, topic: r.topic, text: lang === "en" ? (r.text_en || r.text) : r.text }));
+    return NextResponse.json({ isPro, items });
   } catch {
     // 回退到内置题库，确保不因 DB 故障影响体验
     const category = categories[categoryId as keyof typeof categories];

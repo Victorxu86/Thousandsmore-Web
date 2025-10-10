@@ -6,6 +6,7 @@ type PromptRow = {
   category_id: string;
   type: "question" | "truth" | "dare";
   text: string;
+  text_en?: string;
   is_published: boolean;
   is_trial: boolean;
   topic: string | null;
@@ -65,6 +66,7 @@ export default function AdminPage() {
         category_id,
         type: normalizeType(type),
         text: textCol,
+        text_en: undefined,
         is_published: true,
         is_trial: false,
         topic: null,
@@ -125,7 +127,8 @@ export default function AdminPage() {
               <th className="p-2 text-left">ID</th>
               <th className="p-2 text-left">分类</th>
               <th className="p-2 text-left">类型</th>
-              <th className="p-2 text-left">文本</th>
+              <th className="p-2 text-left">文本(中文)</th>
+              <th className="p-2 text-left">Text (EN)</th>
               <th className="p-2 text-left">发布</th>
               <th className="p-2 text-left">试用</th>
               <th className="p-2 text-left">主题</th>
@@ -158,6 +161,9 @@ export default function AdminPage() {
                 </td>
                 <td className="p-2"><textarea className="w-full h-16 rounded border px-2 py-1" value={r.text} onChange={(e)=>{
                   const v=e.target.value; setItems((p)=>p.map((x,i)=>i===idx?{...x,text:v}:x));
+                }} /></td>
+                <td className="p-2"><textarea className="w-full h-16 rounded border px-2 py-1" value={r.text_en||""} onChange={(e)=>{
+                  const v=e.target.value; setItems((p)=>p.map((x,i)=>i===idx?{...x,text_en:v}:x));
                 }} /></td>
                 <td className="p-2">
                   <input type="checkbox" checked={r.is_published} onChange={(e)=>{

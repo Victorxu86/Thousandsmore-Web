@@ -8,7 +8,7 @@ export async function GET(req: NextRequest) {
   const supabase = getSupabaseAdmin();
   const { searchParams } = new URL(req.url);
   const category = searchParams.get("category") || undefined;
-  let q = supabase.from("prompts").select("id,category_id,type,text,is_published,is_trial,topic").order("category_id").order("id");
+  let q = supabase.from("prompts").select("id,category_id,type,text,text_en,is_published,is_trial,topic").order("category_id").order("id");
   if (category) q = q.eq("category_id", category);
   const { data, error } = await q;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

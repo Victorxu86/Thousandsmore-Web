@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabaseServer";
-import { ENTITLEMENT_COOKIE, signEntitlement } from "@/lib/token";
+import { ENTITLEMENT_COOKIE, signEntitlement, type EntitlementScope } from "@/lib/token";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -24,14 +24,19 @@ export async function GET(req: NextRequest) {
   }
 
   // 下发 httpOnly 签名 Cookie，7 天有效
-  const hasAll = data?.some((r: { scope: string }) => r.scope === "all");
-  const preferredScope = hasAll
-    ? "all"
-    : (data?.find((r: { scope: string }) => r.scope === "dating")?.scope
-      || data?.find((r: { scope: string }) => r.scope === "party")?.scope
-      || data?.find((r: { scope: string }) => r.scope === "intimacy")?.scope
-      || "all");
-  const token = signEntitlement({ email, scope: preferredScope as any, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 7*24*3600 });
+  const rows = Array.isArray(data) ? (data as Array<{ scope: EntitlementScope }>) : [];
+  const scopes: EntitlementScope[] = rows.map((r) => r.scope);
+  const preferredScope: EntitlementScope =
+    scopes.includes("all")
+      ? "all"
+      : scopes.includes("dating")
+      ? "dating"
+      : scopes.includes("party")
+      ? "party"
+      : scopes.includes("intimacy")
+      ? "intimacy"
+      : "all";
+  const token = signEntitlement({ email, scope: preferredScope, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 7*24*3600 });
   const res = NextResponse.redirect(new URL(`/?restore=ok`, req.url));
   res.cookies.set(ENTITLEMENT_COOKIE, token, { httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 7*24*3600 });
   return res;

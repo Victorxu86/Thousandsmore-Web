@@ -30,7 +30,9 @@ export default function Home() {
         <style id="home-hide-nav">{`.top-nav{opacity:0;pointer-events:none;}`}</style>
       )}
       <div className="relative w-full max-w-5xl mx-auto px-6">
-        <h1 className={`fixed top-[25vh] left-1/2 -translate-x-1/2 text-3xl sm:text-4xl font-semibold text-center pointer-events-none z-10 ${intro ? "intro-fade" : ""} tm-gradient-text`}>THOUSANDS MORE</h1>
+        <h1 className={`text-3xl sm:text-4xl font-semibold text-center pointer-events-none z-10 ${intro ? "intro-fade" : ""} tm-gradient-text sm:fixed sm:top-[25vh] sm:left-1/2 sm:-translate-x-1/2 mt-4 mb-6 sm:mt-0 sm:mb-0`}>
+          THOUSANDS MORE
+        </h1>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 items-center">
           {/* 朋友（紫） */}
@@ -84,14 +86,12 @@ export default function Home() {
 
         {/* 底部声明（进场结束后显示） */}
         {!intro && (
-          <div className="fixed bottom-4 left-1/2 -translate-x-1/2 px-4 text-center text-[11px] sm:text-xs opacity-70 z-10">
-            <span>
-              使用本网站即表示您同意遵守并受我们的
-              <Link href="/terms" className="underline hover:opacity-90 mx-1">服务条款</Link>
-              与
-              <Link href="/privacy" className="underline hover:opacity-90 mx-1">隐私政策</Link>
-              的约束。成人相关内容仅面向已成年且自愿、合规、尊重边界的用户。
-            </span>
+          <div className="mt-6 sm:mt-0 px-6 sm:px-4 text-center text-[11px] sm:text-xs opacity-70 z-10 sm:fixed sm:bottom-4 sm:left-1/2 sm:-translate-x-1/2">
+            使用本网站即表示您同意遵守并受我们的
+            <Link href="/terms" className="underline hover:opacity-90 mx-1">服务条款</Link>
+            与
+            <Link href="/privacy" className="underline hover:opacity-90 mx-1">隐私政策</Link>
+            的约束。成人相关内容仅面向已成年且自愿、合规、尊重边界的用户。
           </div>
         )}
       </div>

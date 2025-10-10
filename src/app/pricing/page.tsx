@@ -24,9 +24,9 @@ export default function PricingPage() {
             <div className="opacity-80 mb-3">该分类无限次数与完整题库</div>
             <div className="flex items-baseline gap-3 mb-4">
               {c.old !== c.now && (
-                <span className="text-sm line-through opacity-60">¥{c.old.toFixed(1)}</span>
+                <span className="text-sm line-through opacity-60">${c.old.toFixed(1)}</span>
               )}
-              <span className="text-2xl font-semibold">¥{c.now.toFixed(1)}</span>
+              <span className="text-2xl font-semibold">${c.now.toFixed(1)}</span>
               {c.old !== c.now && (
                 <span className="text-[10px] px-2 py-0.5 rounded-full border border-purple-500/60 opacity-80">限时</span>
               )}
@@ -54,8 +54,8 @@ export default function PricingPage() {
           <div className="text-lg font-medium mb-2">全部解锁</div>
           <div className="opacity-80 mb-3">一次购买，解锁全部分类与次数限制</div>
           <div className="flex items-baseline gap-3 mb-4">
-            <span className="text-sm line-through opacity-60">¥18.8</span>
-            <span className="text-2xl font-semibold">¥12.8</span>
+            <span className="text-sm line-through opacity-60">$18.8</span>
+            <span className="text-2xl font-semibold">$12.8</span>
             <span className="text-[10px] px-2 py-0.5 rounded-full border border-purple-500/60 opacity-80">限时</span>
           </div>
           <button

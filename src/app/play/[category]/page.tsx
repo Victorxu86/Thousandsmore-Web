@@ -222,7 +222,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
       </div>
 
       <div className="w-full max-w-2xl text-center mt-10">
-        <h1 className={`text-2xl font-semibold mb-2 ${theme.textAccent}`}>{category.id === "party" ? "酒桌" : category.id === "intimacy" ? "激情" : "朋友"}</h1>
+        <h1 className={`text-2xl font-semibold mb-2 ${theme.textAccent}`}>{category.id === "party" ? "酒桌" : category.id === "intimacy" ? "激情" : "Deeptalk"}</h1>
 
         {/* 激情页年龄确认弹窗 */}
         {category.id === "intimacy" && hydrated && !ageConfirmed && (
@@ -260,7 +260,16 @@ export default function PlayCategoryPage({ params }: PageProps) {
               全部
             </button>
             {topics.map((t) => {
-              const label = t === 'warmup' ? '热身' : t === 'connection' ? '连接' : t === 'deep' ? '哲学' : t === 'icebreaker' ? '破冰' : t === 'dare_fun' ? '挑战' : t === 'truth_chat' ? '真心话' : t === 'truth_basic' ? '真心话' : t === 'dare_soft' ? '轻冒险' : t === 'boundaries' ? '边界' : t;
+              const label =
+                t === 'warmup' ? '了解' :
+                t === 'connection' ? '升温' :
+                t === 'deep' ? '哲学' :
+                t === 'icebreaker' ? '破冰' :
+                t === 'truth_chat' ? '八卦' :
+                t === 'dare_fun' ? '找乐子' :
+                t === 'truth_basic' ? '轻松' :
+                t === 'dare_soft' ? '热情' :
+                t === 'boundaries' ? '极限' : t;
               const active = activeTopics.has(t);
               return (
                 <button

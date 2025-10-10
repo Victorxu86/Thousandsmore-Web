@@ -43,7 +43,7 @@ export default function Home() {
               <div className="absolute inset-[-10%] rounded-full border-2 border-purple-500/60 wobble-spin" style={{ animationDuration: "7.3s", animationDelay: "-.6s" }} />
               <div className="absolute inset-0 rounded-full border-2 border-purple-500 wobble-spin" style={{ animationDuration: "8.4s", animationDelay: "-.9s" }} />
               <div className="relative text-center">
-                <div className="text-sm uppercase tracking-wide opacity-70 mb-1">朋友</div>
+                <div className="text-sm uppercase tracking-wide opacity-70 mb-1">Deeptalk</div>
                 <div className="text-lg font-medium">开启话题</div>
               </div>
             </div>

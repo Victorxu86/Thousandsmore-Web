@@ -58,8 +58,8 @@ export default function Home() {
               <div className="absolute inset-[-10%] rounded-full border-2 border-purple-500/60 wobble-spin" style={{ animationDuration: "7.3s", animationDelay: "-.6s" }} />
               <div className="absolute inset-0 rounded-full border-2 border-purple-500 wobble-spin" style={{ animationDuration: "8.4s", animationDelay: "-.9s" }} />
               <div className="relative text-center">
-                <div className="text-sm uppercase tracking-wide opacity-70 mb-1">{lang === "en" ? "Deeptalk" : "Deeptalk"}</div>
-                <div className="text-lg font-medium">{lang === "en" ? "Start Knowing" : "开启话题"}</div>
+                <div className="text-lg sm:text-xl uppercase tracking-wide opacity-95 font-semibold mb-1">{lang === "en" ? "Deeptalk" : "Deeptalk"}</div>
+                <div className="text-xs opacity-70">{lang === "en" ? "Start Knowing" : "开启话题"}</div>
               </div>
             </div>
           </Link>
@@ -74,8 +74,8 @@ export default function Home() {
               <div className="absolute inset-[-10%] rounded-full border-2 border-yellow-500/60 wobble-spin" style={{ animationDuration: "7.6s", animationDelay: "-.7s" }} />
               <div className="absolute inset-0 rounded-full border-2 border-yellow-500 wobble-spin" style={{ animationDuration: "8.8s", animationDelay: "-1.1s" }} />
               <div className="relative text-center">
-                <div className="text-sm uppercase tracking-wide opacity-70 mb-1">{lang === "en" ? "Party" : "酒桌"}</div>
-                <div className="text-lg font-medium">{lang === "en" ? "Truth or Dare" : "真心话/大冒险"}</div>
+                <div className="text-lg sm:text-xl uppercase tracking-wide opacity-95 font-semibold mb-1">{lang === "en" ? "Party" : "酒桌"}</div>
+                <div className="text-xs opacity-70">{lang === "en" ? "Truth or Dare" : "真心话/大冒险"}</div>
               </div>
             </div>
           </Link>
@@ -90,8 +90,8 @@ export default function Home() {
               <div className="absolute inset-[-10%] rounded-full border-2 border-rose-600/60 wobble-spin" style={{ animationDuration: "7.1s", animationDelay: "-.4s" }} />
               <div className="absolute inset-0 rounded-full border-2 border-rose-600 wobble-spin" style={{ animationDuration: "8.2s", animationDelay: "-.8s" }} />
               <div className="relative text-center">
-                <div className="text-sm uppercase tracking-wide opacity-70 mb-1">{lang === "en" ? "Intimacy" : "激情"}</div>
-                <div className="text-lg font-medium">{lang === "en" ? "Explore the Boundaries" : "边界内探索"}</div>
+                <div className="text-lg sm:text-xl uppercase tracking-wide opacity-95 font-semibold mb-1">{lang === "en" ? "Intimacy" : "激情"}</div>
+                <div className="text-xs opacity-70">{lang === "en" ? "Explore the Boundaries" : "边界内探索"}</div>
               </div>
             </div>
           </Link>

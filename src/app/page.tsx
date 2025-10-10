@@ -59,7 +59,7 @@ export default function Home() {
               <div className="absolute inset-0 rounded-full border-2 border-purple-500 wobble-spin" style={{ animationDuration: "8.4s", animationDelay: "-.9s" }} />
               <div className="relative text-center">
                 <div className="text-sm uppercase tracking-wide opacity-70 mb-1">{lang === "en" ? "Deeptalk" : "Deeptalk"}</div>
-                <div className="text-lg font-medium">{lang === "en" ? "Start Talking" : "开启话题"}</div>
+                <div className="text-lg font-medium">{lang === "en" ? "Start Knowing" : "开启话题"}</div>
               </div>
             </div>
           </Link>
@@ -91,7 +91,7 @@ export default function Home() {
               <div className="absolute inset-0 rounded-full border-2 border-rose-600 wobble-spin" style={{ animationDuration: "8.2s", animationDelay: "-.8s" }} />
               <div className="relative text-center">
                 <div className="text-sm uppercase tracking-wide opacity-70 mb-1">{lang === "en" ? "Intimacy" : "激情"}</div>
-                <div className="text-lg font-medium">{lang === "en" ? "Explore with Boundaries" : "边界内探索"}</div>
+                <div className="text-lg font-medium">{lang === "en" ? "Explore the Boundaries" : "边界内探索"}</div>
               </div>
             </div>
           </Link>

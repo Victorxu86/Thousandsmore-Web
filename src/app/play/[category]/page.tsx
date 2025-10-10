@@ -277,12 +277,12 @@ export default function PlayCategoryPage({ params }: PageProps) {
                 t === 'dare_soft' ? '热情' :
                 t === 'boundaries' ? '极限' : t;
               const labelEn =
-                t === 'warmup' ? 'Know you' :
-                t === 'connection' ? 'Warm up' :
+                t === 'warmup' ? 'Knowing' :
+                t === 'connection' ? 'Warm Up' :
                 t === 'deep' ? 'Philosophy' :
                 t === 'icebreaker' ? 'Icebreaker' :
                 t === 'truth_chat' ? 'Gossip' :
-                t === 'dare_fun' ? 'For fun' :
+                t === 'dare_fun' ? 'Fun' :
                 t === 'truth_basic' ? 'Easy' :
                 t === 'dare_soft' ? 'Passion' :
                 t === 'boundaries' ? 'Extreme' : t;

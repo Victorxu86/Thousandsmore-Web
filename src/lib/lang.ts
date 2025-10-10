@@ -8,7 +8,7 @@ export function getLang(): Lang {
     const v = localStorage.getItem(KEY) as Lang | null;
     if (v === "en" || v === "zh") return v;
   } catch {}
-  return "zh";
+  return "en"; // 默认英文
 }
 
 export function setLang(lang: Lang) {

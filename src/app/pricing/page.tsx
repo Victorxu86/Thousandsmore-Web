@@ -46,7 +46,7 @@ export default function PricingPage() {
                 }
               }}
             >
-              {lang === "en" ? `Buy ${c.en}` : `购买 ${c.zh}`}
+              {lang === "en" ? `Purchase` : `购买 ${c.zh}`}
             </button>
           </div>
         ))}
@@ -73,7 +73,7 @@ export default function PricingPage() {
               }
             }}
           >
-            {lang === "en" ? "Buy All" : "购买全部"}
+            {lang === "en" ? "Purchase" : "购买全部"}
           </button>
         </div>
       </div>

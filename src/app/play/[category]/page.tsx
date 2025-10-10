@@ -185,7 +185,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
         <div className="fixed inset-0 bg-background" />
       )}
       {category.id === "intimacy" && hydrated && !ageConfirmed && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md" />
+        <div className="fixed inset-0 z-30 bg-black/60 backdrop-blur-md" />
       )}
       <div className="w-full max-w-2xl flex items-center justify-between">
         <Link href="/?noIntro=1" className={`group inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-full border ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent} transition`}>
@@ -231,7 +231,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
 
         {/* 激情页年龄确认弹窗 */}
         {category.id === "intimacy" && hydrated && !ageConfirmed && (
-          <div className="fixed inset-0 flex items-center justify-center z-30">
+          <div className="fixed inset-0 flex items-center justify-center z-40">
             <div className="modal-pop w-[92%] max-w-md rounded-xl border border-rose-600/60 bg-black/85 text-white p-5 shadow-[0_10px_40px_rgba(225,29,72,.35)]">
               <h2 className="text-lg font-semibold mb-2">{lang === "en" ? "Before you enter" : "进入前的确认"}</h2>
               <p className="text-sm opacity-80 leading-6">

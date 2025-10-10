@@ -200,7 +200,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
               const thumbBg = category.id === "party" ? "bg-yellow-500/70" : category.id === "intimacy" ? "bg-rose-600/70" : "bg-purple-600/70";
               const selectedText = category.id === "party" ? "text-black" : "text-white";
               return (
-                <div className={`relative grid grid-cols-3 rounded-full border ${theme.borderAccent} bg-black/30 backdrop-blur-sm p-0.5`} style={{ width: 160 }}>
+                <div className={`relative grid grid-cols-3 rounded-full border ${theme.borderAccent} bg-black/30 backdrop-blur-sm p-0.5`} style={{ width: 200 }}>
                   <div
                     className={`absolute inset-y-0 rounded-full transition-transform duration-200 ease-out ${thumbBg} shadow-[0_1px_6px_rgba(0,0,0,0.25)]`}
                     style={{ width: "33.3333%", transform: `translateX(${idx * 100}%)` }}
@@ -209,7 +209,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
                     <button
                       key={opt}
                       onClick={() => setTypeFilter(opt === "all" ? "all" : opt)}
-                      className={`relative z-10 px-2.5 py-1 text-xs transition-colors cursor-pointer ${typeFilter === opt ? `${selectedText} font-medium` : `${theme.textAccent} opacity-80 hover:opacity-100`}`}
+                      className={`relative z-10 px-2.5 py-1 text-xs whitespace-nowrap transition-colors cursor-pointer ${typeFilter === opt ? `${selectedText} font-medium` : `${theme.textAccent} opacity-80 hover:opacity-100`}`}
                     >
                       {opt === "all" ? "混合" : opt === "truth" ? "真心话" : "大冒险"}
                     </button>

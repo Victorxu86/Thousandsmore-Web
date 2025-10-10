@@ -48,7 +48,9 @@ export async function GET(req: NextRequest) {
       if (topics.length > 0) query = query.in("topic", topics);
       const { data, error } = await query.order("id").limit(FREE_LIMIT_PER_CATEGORY);
       if (error) throw error;
-      const items = (data || []).map((r: any) => ({ id: r.id, type: r.type, topic: r.topic, text: lang === "en" ? (r.text_en || r.text) : r.text }));
+      type DbRow = { id: string; type: "question"|"truth"|"dare"; topic: string|null; text: string|null; text_en: string|null };
+      const rows: DbRow[] = Array.isArray(data) ? (data as DbRow[]) : [];
+      const items = rows.map((r) => ({ id: r.id, type: r.type, topic: r.topic, text: lang === "en" ? (r.text_en || r.text || "") : (r.text || "") }));
       return NextResponse.json({ isPro, items });
     }
     let proQuery = supabase
@@ -59,7 +61,9 @@ export async function GET(req: NextRequest) {
     if (topics.length > 0) proQuery = proQuery.in("topic", topics);
     const { data, error } = await proQuery.order("id");
     if (error) throw error;
-    const items = (data || []).map((r: any) => ({ id: r.id, type: r.type, topic: r.topic, text: lang === "en" ? (r.text_en || r.text) : r.text }));
+    type DbRow = { id: string; type: "question"|"truth"|"dare"; topic: string|null; text: string|null; text_en: string|null };
+    const rows: DbRow[] = Array.isArray(data) ? (data as DbRow[]) : [];
+    const items = rows.map((r) => ({ id: r.id, type: r.type, topic: r.topic, text: lang === "en" ? (r.text_en || r.text || "") : (r.text || "") }));
     return NextResponse.json({ isPro, items });
   } catch {
     // 回退到内置题库，确保不因 DB 故障影响体验

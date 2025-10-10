@@ -30,7 +30,7 @@ export default function Home() {
         <style id="home-hide-nav">{`.top-nav{opacity:0;pointer-events:none;}`}</style>
       )}
       <div className="relative w-full max-w-5xl mx-auto px-6">
-        <h1 className={`fixed top-[25vh] left-1/2 -translate-x-1/2 text-3xl sm:text-4xl font-semibold text-center pointer-events-none z-10 ${intro ? "intro-fade" : ""}`}>Thousands More</h1>
+        <h1 className={`fixed top-[25vh] left-1/2 -translate-x-1/2 text-3xl sm:text-4xl font-semibold text-center pointer-events-none z-10 ${intro ? "intro-fade" : ""} tm-gradient-text`}>THOUSANDS MORE</h1>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 items-center">
           {/* 朋友（紫） */}

@@ -18,4 +18,3 @@ update public.prompts set topic = '热情' where category_id = 'intimacy' and to
 update public.prompts set topic = '极限' where category_id = 'intimacy' and topic = 'boundaries';
 
 -- 索引不变（topic 为 text），但若你频繁使用中文 key 做过滤，请确保编码一致且正确建立索引。
-

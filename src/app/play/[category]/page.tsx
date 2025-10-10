@@ -265,27 +265,27 @@ export default function PlayCategoryPage({ params }: PageProps) {
               {lang === "en" ? "All" : "全部"}
             </button>
             {topics.map((t) => {
-              // 兼容老的英文键，但首选中文键原样显示
+              // 兼容老的英文键与当前中文键，双向映射
               const label =
-                t === 'warmup' ? '了解' :
-                t === 'connection' ? '升温' :
-                t === 'deep' ? '哲学' :
-                t === 'icebreaker' ? '破冰' :
-                t === 'truth_chat' ? '八卦' :
-                t === 'dare_fun' ? '找乐子' :
-                t === 'truth_basic' ? '轻松' :
-                t === 'dare_soft' ? '热情' :
-                t === 'boundaries' ? '极限' : t;
+                t === 'warmup' || t === '了解' ? '了解' :
+                t === 'connection' || t === '升温' ? '升温' :
+                t === 'deep' || t === '哲学' ? '哲学' :
+                t === 'icebreaker' || t === '破冰' ? '破冰' :
+                t === 'truth_chat' || t === '八卦' ? '八卦' :
+                t === 'dare_fun' || t === '找乐子' ? '找乐子' :
+                t === 'truth_basic' || t === '轻松' ? '轻松' :
+                t === 'dare_soft' || t === '热情' ? '热情' :
+                t === 'boundaries' || t === '极限' ? '极限' : t;
               const labelEn =
-                t === 'warmup' ? 'Knowing' :
-                t === 'connection' ? 'Warm Up' :
-                t === 'deep' ? 'Philosophy' :
-                t === 'icebreaker' ? 'Icebreaker' :
-                t === 'truth_chat' ? 'Gossip' :
-                t === 'dare_fun' ? 'Fun' :
-                t === 'truth_basic' ? 'Easy' :
-                t === 'dare_soft' ? 'Passion' :
-                t === 'boundaries' ? 'Extreme' : t;
+                t === 'warmup' || t === '了解' ? 'Knowing' :
+                t === 'connection' || t === '升温' ? 'Heat Up' :
+                t === 'deep' || t === '哲学' ? 'Philosophy' :
+                t === 'icebreaker' || t === '破冰' ? 'Icebreaker' :
+                t === 'truth_chat' || t === '八卦' ? 'Gossip' :
+                t === 'dare_fun' || t === '找乐子' ? 'Fun' :
+                t === 'truth_basic' || t === '轻松' ? 'Easy' :
+                t === 'dare_soft' || t === '热情' ? 'Passion' :
+                t === 'boundaries' || t === '极限' ? 'Extreme' : String(t);
               const active = activeTopics.has(t);
               return (
                 <button

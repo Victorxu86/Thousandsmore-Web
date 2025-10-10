@@ -5,6 +5,7 @@ import Link from "next/link";
 import { categories, getCategoryById, getPromptsByType } from "@/data";
 import { getRandomPrompt } from "@/data/prompts";
 import type { Prompt, PromptType } from "@/data/types";
+import { useLang } from "@/lib/lang";
 
 type PageProps = {
   params: { category: string };
@@ -23,6 +24,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
   const [hydrated, setHydrated] = useState(false);
   const [promptReady, setPromptReady] = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState<boolean>(false);
+  const lang = useLang();
 
   const theme = useMemo(() => {
     const id = category?.id;
@@ -188,7 +190,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
       <div className="w-full max-w-2xl flex items-center justify-between">
         <Link href="/?noIntro=1" className={`group inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-full border ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent} transition`}>
           <span className={`inline-block w-0 h-0 border-t-4 border-b-4 border-r-6 border-t-transparent border-b-transparent ${theme.arrowColor}`}></span>
-          <span className={`${theme.textAccent} group-hover:text-white`}>返回</span>
+          <span className={`${theme.textAccent} group-hover:text-white`}>{lang === "en" ? "Back" : "返回"}</span>
         </Link>
         <div className="flex-1" />
         {allowedTypes.length > 1 && (
@@ -212,7 +214,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
                       onClick={() => setTypeFilter(opt === "all" ? "all" : opt)}
                       className={`relative z-10 px-2.5 py-1 text-xs whitespace-nowrap transition-colors cursor-pointer ${typeFilter === opt ? `${selectedText} font-medium` : `${theme.textAccent} opacity-80 hover:opacity-100`}`}
                     >
-                      {opt === "all" ? "混合" : opt === "truth" ? "真心话" : "大冒险"}
+                      {opt === "all" ? (lang === "en" ? "Mixed" : "混合") : opt === "truth" ? (lang === "en" ? "Truth" : "真心话") : (lang === "en" ? "Dare" : "大冒险")}
                     </button>
                   ))}
                 </div>
@@ -223,28 +225,30 @@ export default function PlayCategoryPage({ params }: PageProps) {
       </div>
 
       <div className="w-full max-w-2xl text-center mt-10">
-        <h1 className={`text-2xl font-semibold mb-2 ${theme.textAccent}`}>{category.id === "party" ? "酒桌" : category.id === "intimacy" ? "激情" : "Deeptalk"}</h1>
+        <h1 className={`text-2xl font-semibold mb-2 ${theme.textAccent}`}>
+          {category.id === "party" ? (lang === "en" ? "Party" : "酒桌") : category.id === "intimacy" ? (lang === "en" ? "Intimacy" : "激情") : (lang === "en" ? "Deeptalk" : "Deeptalk")}
+        </h1>
 
         {/* 激情页年龄确认弹窗 */}
         {category.id === "intimacy" && hydrated && !ageConfirmed && (
           <div className="fixed inset-0 flex items-center justify-center z-30">
             <div className="modal-pop w-[92%] max-w-md rounded-xl border border-rose-600/60 bg-black/85 text-white p-5 shadow-[0_10px_40px_rgba(225,29,72,.35)]">
-              <h2 className="text-lg font-semibold mb-2">进入前的确认</h2>
+              <h2 className="text-lg font-semibold mb-2">{lang === "en" ? "Before you enter" : "进入前的确认"}</h2>
               <p className="text-sm opacity-80 leading-6">
-                本页面包含成人与敏感内容。仅限成年人在自愿、合规、尊重边界的前提下使用。
+                {lang === "en" ? "This page contains adult/sensitive content. For consenting adults only." : "本页面包含成人与敏感内容。仅限成年人在自愿、合规、尊重边界的前提下使用。"}
               </p>
               <div className="mt-4 flex items-center justify-end gap-3">
                 <button
                   onClick={() => (window.location.href = "/?noIntro=1")}
                   className="px-3 py-2 rounded-full text-sm border border-rose-600/60 hover:bg-rose-600/10"
                 >
-                  返回首页
+                  {lang === "en" ? "Home" : "返回首页"}
                 </button>
                 <button
                   onClick={() => { try { sessionStorage.setItem("intimacy_age_ok", "1"); } catch {}; setAgeConfirmed(true); }}
                   className="px-4 py-2 rounded-full text-sm bg-rose-600 text-white hover:brightness-110"
                 >
-                  我已成年，继续
+                  {lang === "en" ? "I am an adult, continue" : "我已成年，继续"}
                 </button>
               </div>
             </div>
@@ -258,7 +262,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
               onClick={() => setActiveTopics(new Set())}
               className={`px-3 py-1.5 rounded-full border text-sm ${activeTopics.size === 0 ? theme.selectedPill : `${theme.borderAccent} ${theme.textAccent} ${theme.hoverAccentBg}`}`}
             >
-              全部
+              {lang === "en" ? "All" : "全部"}
             </button>
             {topics.map((t) => {
               // 兼容老的英文键，但首选中文键原样显示
@@ -295,14 +299,14 @@ export default function PlayCategoryPage({ params }: PageProps) {
         {currentPrompt ? (
           <div className={`rounded-lg border ${theme.cardBorder} p-6 text-left bg-black/20 backdrop-blur-[2px] ${theme.cardShadow} card-breathe mt-10`}>
             <div className="text-xs uppercase tracking-wide opacity-70 mb-2">
-              {currentPrompt.type === "question" ? "问题" : currentPrompt.type === "truth" ? "真心话" : "大冒险"}
+              {currentPrompt.type === "question" ? (lang === "en" ? "Question" : "问题") : currentPrompt.type === "truth" ? (lang === "en" ? "Truth" : "真心话") : (lang === "en" ? "Dare" : "大冒险")}
             </div>
             <div className="text-lg leading-relaxed whitespace-pre-wrap">{currentPrompt.text}</div>
 
-            <div className="mt-6 text-xs opacity-70">{isPro ? "已解锁全部问题" : "体验版（最多 10 条/分类）"}</div>
+            <div className="mt-6 text-xs opacity-70">{isPro ? (lang === "en" ? "All questions unlocked" : "已解锁全部问题") : (lang === "en" ? "Trial (max 10 per category)" : "体验版（最多 10 条/分类）")}</div>
           </div>
         ) : (
-          <div className="rounded-lg border p-6 opacity-70 mt-10">暂无可用条目</div>
+          <div className="rounded-lg border p-6 opacity-70 mt-10">{lang === "en" ? "No items available" : "暂无可用条目"}</div>
         )}
 
         <div className="mt-8 flex items-center justify-center gap-3">
@@ -311,7 +315,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
               onClick={handleUpgrade}
               className={`px-4 py-2 rounded-full border ${theme.borderAccent} text-sm ${theme.hoverAccentBg} ${theme.shadowAccent}`}
             >
-              解锁全部
+              {lang === "en" ? "Unlock All" : "解锁全部"}
             </button>
           )}
           <button
@@ -319,7 +323,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
             disabled={limitReached}
             className={`px-4 py-2 rounded-full text-sm border ${theme.borderAccent} ${limitReached ? "opacity-50 cursor-not-allowed" : `${theme.hoverAccentBg} ${theme.shadowAccent}`}`}
           >
-            下一个
+            {lang === "en" ? "Next" : "下一个"}
           </button>
         </div>
       </div>

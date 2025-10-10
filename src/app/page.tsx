@@ -1,9 +1,11 @@
 "use client";
 import Link from "next/link";
+import { useLang, setLang } from "@/lib/lang";
 import { useEffect, useState } from "react";
 
 export default function Home() {
   const [intro, setIntro] = useState(true);
+  const lang = useLang();
   useEffect(() => {
     const w = typeof window !== "undefined" ? window : null;
     const noIntro = w ? new URLSearchParams(w.location.search).get("noIntro") === "1" : false;
@@ -84,14 +86,46 @@ export default function Home() {
           </Link>
         </div>
 
+        {/* 语言选择弹窗（进场结束后出现一次） */}
+        {!intro && (
+          <div className="fixed inset-0 z-20 flex items-center justify-center px-4 sm:px-0">
+            <div className="modal-pop w-full max-w-sm rounded-xl border border-white/15 bg-black/85 text-white p-5 shadow-[0_10px_40px_rgba(0,0,0,.35)]">
+              <h2 className="text-lg font-semibold mb-2">{lang === "en" ? "Language / 语言" : "语言选择 / Language"}</h2>
+              <p className="text-sm opacity-80 leading-6 mb-4">{lang === "en" ? "Choose your preferred language. You can change it anytime in the top-right." : "请选择偏好的语言（右上角可随时切换）。"}</p>
+              <div className="flex items-center gap-3 justify-end">
+                <button onClick={() => setLang("zh")} className="px-3 py-2 rounded-full border hover:bg-white/10">中文</button>
+                <button onClick={() => setLang("en")} className="px-3 py-2 rounded-full border hover:bg-white/10">English</button>
+                <button onClick={() => {
+                  const el = document.querySelector('#lang-once');
+                  if (el) el.remove();
+                  const overlay = document.getElementById('lang-overlay');
+                  if (overlay) overlay.remove();
+                }} className="px-3 py-2 rounded-full bg-white text-black">{lang === "en" ? "Continue" : "继续"}</button>
+              </div>
+            </div>
+            <div id="lang-overlay" className="absolute inset-0 bg-black/60" />
+            <div id="lang-once" />
+          </div>
+        )}
+
         {/* 底部声明（进场结束后显示） */}
         {!intro && (
           <div className="mt-6 sm:mt-0 px-6 sm:px-4 text-center text-[11px] sm:text-xs opacity-70 z-10 sm:fixed sm:bottom-4 sm:left-1/2 sm:-translate-x-1/2">
-            使用本网站即表示您同意遵守并受我们的
-            <Link href="/terms" className="underline hover:opacity-90 mx-1">服务条款</Link>
-            与
-            <Link href="/privacy" className="underline hover:opacity-90 mx-1">隐私政策</Link>
-            的约束。成人相关内容仅面向已成年且自愿、合规、尊重边界的用户。
+            {lang === "en" ? (
+              <>
+                By using this site, you agree to our
+                <Link href="/terms" className="underline hover:opacity-90 mx-1">Terms</Link>
+                and
+                <Link href="/privacy" className="underline hover:opacity-90 mx-1">Privacy</Link>.
+                Adult-related content is for consenting adults only.
+              </>
+            ) : (
+              <>使用本网站即表示您同意遵守并受我们的
+                <Link href="/terms" className="underline hover:opacity-90 mx-1">服务条款</Link>
+                与
+                <Link href="/privacy" className="underline hover:opacity-90 mx-1">隐私政策</Link>
+                的约束。成人相关内容仅面向已成年且自愿、合规、尊重边界的用户。</>
+            )}
           </div>
         )}
       </div>

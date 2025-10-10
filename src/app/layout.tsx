@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Link from "next/link";
+import { useLang, setLang } from "@/lib/lang";
 import Script from "next/script";
 
 const geistSans = Geist({
@@ -24,6 +25,7 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const lang = (typeof window !== "undefined" ? require("@/lib/lang") : { useLang: () => "zh" as const }).useLang?.() ?? "zh";
   return (
     <html lang="en">
       <body
@@ -36,8 +38,11 @@ export default function RootLayout({
         <header className="top-nav w-full max-w-5xl mx-auto flex items-center justify-between p-4">
           <Link href="/" className="font-medium">Thousandsmore</Link>
           <nav className="flex items-center gap-4 text-sm">
-            <Link href="/pricing" className="hover:underline">定价</Link>
-            <Link href="/restore" className="hover:underline">恢复购买</Link>
+            <Link href="/pricing" className="hover:underline">{lang === "en" ? "Pricing" : "定价"}</Link>
+            <Link href="/restore" className="hover:underline">{lang === "en" ? "Restore" : "恢复购买"}</Link>
+            <button onClick={() => setLang(lang === "en" ? "zh" : "en")} className="px-3 py-1 rounded-full border hover:bg-black/5">
+              {lang === "en" ? "中 / En" : "中 / En"}
+            </button>
           </nav>
         </header>
         {children}

@@ -185,7 +185,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
         <div className="fixed inset-0 bg-background" />
       )}
       {category.id === "intimacy" && hydrated && !ageConfirmed && (
-        <div className="fixed inset-0 bg-background/80 backdrop-blur-md" />
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-md" />
       )}
       <div className="w-full max-w-2xl flex items-center justify-between">
         <Link href="/?noIntro=1" className={`group inline-flex items-center gap-2 text-sm px-3 py-1.5 rounded-full border ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent} transition`}>

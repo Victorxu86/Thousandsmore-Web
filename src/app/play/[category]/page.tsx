@@ -203,7 +203,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
               const thumbBg = category.id === "party" ? "bg-yellow-500/70" : category.id === "intimacy" ? "bg-rose-600/70" : "bg-purple-600/70";
               const selectedText = category.id === "party" ? "text-black" : "text-white";
               return (
-                <div className={`relative grid grid-cols-3 rounded-full border ${theme.borderAccent} bg-black/30 backdrop-blur-sm p-0.5`} style={{ width: 220 }}>
+                <div className={`relative grid grid-cols-3 rounded-full border ${theme.borderAccent} bg-black/30 backdrop-blur-sm p-0.5 w-[200px] sm:w-[240px]`}>
                   <div
                     className={`absolute inset-y-0 rounded-full transition-transform duration-200 ease-out ${thumbBg} shadow-[0_1px_6px_rgba(0,0,0,0.25)]`}
                     style={{ width: "33.3333%", transform: `translateX(${idx * 100}%)` }}
@@ -307,7 +307,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
         {/* 顶部已提供分段滑动控件，这里移除中部切换 */}
 
         {currentPrompt ? (
-          <div className={`rounded-lg border ${theme.cardBorder} p-6 text-left bg-black/20 backdrop-blur-[2px] ${theme.cardShadow} card-breathe mt-10`}>
+          <div className={`rounded-lg border ${theme.cardBorder} p-4 sm:p-6 text-left bg-black/20 backdrop-blur-[2px] ${theme.cardShadow} card-breathe mt-8 sm:mt-10`}>
             <div className="text-xs uppercase tracking-wide opacity-70 mb-2">
               {currentPrompt.type === "question" ? (lang === "en" ? "Question" : "问题") : currentPrompt.type === "truth" ? (lang === "en" ? "Truth" : "真心话") : (lang === "en" ? "Dare" : "大冒险")}
             </div>
@@ -323,7 +323,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
           {!isPro && (
             <button
               onClick={handleUpgrade}
-              className={`px-4 py-2 rounded-full border ${theme.borderAccent} text-sm ${theme.hoverAccentBg} ${theme.shadowAccent}`}
+              className={`px-3 sm:px-4 py-2 rounded-full border ${theme.borderAccent} text-sm ${theme.hoverAccentBg} ${theme.shadowAccent} w-full sm:w-auto`}
             >
               {lang === "en" ? "Unlock All" : "解锁全部"}
             </button>
@@ -331,7 +331,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
           <button
             onClick={handleNext}
             disabled={limitReached}
-            className={`px-4 py-2 rounded-full text-sm border ${theme.borderAccent} ${limitReached ? "opacity-50 cursor-not-allowed" : `${theme.hoverAccentBg} ${theme.shadowAccent}`}`}
+            className={`px-3 sm:px-4 py-2 rounded-full text-sm border ${theme.borderAccent} ${limitReached ? "opacity-50 cursor-not-allowed" : `${theme.hoverAccentBg} ${theme.shadowAccent}`} w-full sm:w-auto`}
           >
             {lang === "en" ? "Next" : "下一个"}
           </button>

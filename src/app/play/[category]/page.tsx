@@ -177,7 +177,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
   const containerVisible = contentReady || (category.id === "intimacy" && hydrated);
 
   return (
-    <div className={`min-h-screen p-6 flex flex-col items-center gap-6 transition-opacity duration-300 ${containerVisible ? "opacity-100" : "opacity-0"}`}>
+    <div className={`min-h-screen p-4 sm:p-6 flex flex-col items-center gap-6 transition-opacity duration-300 ${containerVisible ? "opacity-100" : "opacity-0"}`}>
       {/* 背景遮罩：内容未就绪 → 实色；激情未确认 → 磨砂 */}
       {!contentReady && category.id !== "intimacy" && (
         <div className="fixed inset-0 bg-background" />
@@ -201,7 +201,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
               const thumbBg = category.id === "party" ? "bg-yellow-500/70" : category.id === "intimacy" ? "bg-rose-600/70" : "bg-purple-600/70";
               const selectedText = category.id === "party" ? "text-black" : "text-white";
               return (
-                <div className={`relative grid grid-cols-3 rounded-full border ${theme.borderAccent} bg-black/30 backdrop-blur-sm p-0.5`} style={{ width: 200 }}>
+                <div className={`relative grid grid-cols-3 rounded-full border ${theme.borderAccent} bg-black/30 backdrop-blur-sm p-0.5`} style={{ width: 220 }}>
                   <div
                     className={`absolute inset-y-0 rounded-full transition-transform duration-200 ease-out ${thumbBg} shadow-[0_1px_6px_rgba(0,0,0,0.25)]`}
                     style={{ width: "33.3333%", transform: `translateX(${idx * 100}%)` }}

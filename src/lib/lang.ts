@@ -13,7 +13,10 @@ export function getLang(): Lang {
 
 export function setLang(lang: Lang) {
   try { localStorage.setItem(KEY, lang); } catch {}
-  try { window.dispatchEvent(new CustomEvent("tm_lang_change", { detail: lang } as any)); } catch {}
+  try {
+    const evt = new CustomEvent<Lang>("tm_lang_change", { detail: lang });
+    window.dispatchEvent(evt);
+  } catch {}
 }
 
 import { useEffect, useState } from "react";
@@ -22,17 +25,17 @@ export function useLang(): Lang {
   useEffect(() => {
     set(getLang());
     const onChange = (e: Event) => {
-      const d = (e as CustomEvent).detail as Lang | undefined;
+      const d = (e as CustomEvent<Lang>).detail;
       if (d === "en" || d === "zh") set(d);
       else set(getLang());
     };
     const onStorage = (e: StorageEvent) => {
       if (e.key === KEY) set(getLang());
     };
-    window.addEventListener("tm_lang_change", onChange as any);
+    window.addEventListener("tm_lang_change", onChange as EventListener);
     window.addEventListener("storage", onStorage);
     return () => {
-      window.removeEventListener("tm_lang_change", onChange as any);
+      window.removeEventListener("tm_lang_change", onChange as EventListener);
       window.removeEventListener("storage", onStorage);
     };
   }, []);

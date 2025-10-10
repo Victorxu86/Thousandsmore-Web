@@ -203,7 +203,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
               const thumbBg = category.id === "party" ? "bg-yellow-500/70" : category.id === "intimacy" ? "bg-rose-600/70" : "bg-purple-600/70";
               const selectedText = category.id === "party" ? "text-black" : "text-white";
               return (
-                <div className={`relative grid grid-cols-3 rounded-full border ${theme.borderAccent} bg-black/30 backdrop-blur-sm p-0.5 w-[200px] sm:w-[240px]`}>
+                <div className={`relative grid grid-cols-3 rounded-full border ${theme.borderAccent} bg-black/30 backdrop-blur-sm p-0.5 w-[180px] sm:w-[240px]`}>
                   <div
                     className={`absolute inset-y-0 rounded-full transition-transform duration-200 ease-out ${thumbBg} shadow-[0_1px_6px_rgba(0,0,0,0.25)]`}
                     style={{ width: "33.3333%", transform: `translateX(${idx * 100}%)` }}
@@ -260,7 +260,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
           <div className="mt-6 mb-8 flex flex-wrap justify-center gap-2">
             <button
               onClick={() => setActiveTopics(new Set())}
-              className={`px-3 py-1.5 rounded-full border text-sm ${activeTopics.size === 0 ? theme.selectedPill : `${theme.borderAccent} ${theme.textAccent} ${theme.hoverAccentBg}`}`}
+              className={`px-3 py-1.5 rounded-full border text-xs sm:text-sm ${activeTopics.size === 0 ? theme.selectedPill : `${theme.borderAccent} ${theme.textAccent} ${theme.hoverAccentBg}`}`}
             >
               {lang === "en" ? "All" : "全部"}
             </button>
@@ -295,7 +295,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
                     if (next.has(t)) next.delete(t); else next.add(t);
                     setActiveTopics(next);
                   }}
-                  className={`px-3 py-1.5 rounded-full border text-sm transition ${active ? theme.selectedPill : `${theme.borderAccent} ${theme.textAccent} ${theme.hoverAccentBg}`}`}
+                  className={`px-3 py-1.5 rounded-full border text-xs sm:text-sm transition ${active ? theme.selectedPill : `${theme.borderAccent} ${theme.textAccent} ${theme.hoverAccentBg}`}`}
                 >
                   {lang === 'en' ? labelEn : label}
                 </button>
@@ -319,11 +319,11 @@ export default function PlayCategoryPage({ params }: PageProps) {
           <div className="rounded-lg border p-6 opacity-70 mt-10">{lang === "en" ? "No items available" : "暂无可用条目"}</div>
         )}
 
-        <div className="mt-8 flex items-center justify-center gap-3">
+        <div className="mt-8 flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-3 w-full">
           {!isPro && (
             <button
               onClick={handleUpgrade}
-              className={`px-3 sm:px-4 py-2 rounded-full border ${theme.borderAccent} text-sm ${theme.hoverAccentBg} ${theme.shadowAccent} w-full sm:w-auto`}
+              className={`px-4 py-2 rounded-full border ${theme.borderAccent} text-sm ${theme.hoverAccentBg} ${theme.shadowAccent} w-full sm:w-auto`}
             >
               {lang === "en" ? "Unlock All" : "解锁全部"}
             </button>
@@ -331,7 +331,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
           <button
             onClick={handleNext}
             disabled={limitReached}
-            className={`px-3 sm:px-4 py-2 rounded-full text-sm border ${theme.borderAccent} ${limitReached ? "opacity-50 cursor-not-allowed" : `${theme.hoverAccentBg} ${theme.shadowAccent}`} w-full sm:w-auto`}
+            className={`px-4 py-2 rounded-full text-sm border ${theme.borderAccent} ${limitReached ? "opacity-50 cursor-not-allowed" : `${theme.hoverAccentBg} ${theme.shadowAccent}`} w-full sm:w-auto`}
           >
             {lang === "en" ? "Next" : "下一个"}
           </button>

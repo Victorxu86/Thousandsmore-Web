@@ -50,7 +50,7 @@ export default function Home() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-8 items-center">
           {/* 朋友（紫） */}
           <Link href="/play/dating" className="group block">
-            <div className={`relative mx-auto w-[180px] h-[180px] sm:w-[220px] sm:h-[220px] rounded-full border-2 border-purple-500/60 flex items-center justify-center overflow-hidden ${intro ? "intro-ring-1" : ""}`}>
+            <div className={`relative mx-auto w-[160px] h-[160px] sm:w-[220px] sm:h-[220px] rounded-full border-2 border-purple-500/60 flex items-center justify-center overflow-hidden ${intro ? "intro-ring-1" : ""}`}>
               <div className="ring-breathe border-purple-500/70" />
               <div className="glow-layer glow-strong glow-purple" />
               <div className="glow-layer glow-purple" />
@@ -66,7 +66,7 @@ export default function Home() {
 
           {/* 酒桌（金） */}
           <Link href="/play/party" className="group block">
-            <div className={`relative mx-auto w-[180px] h-[180px] sm:w-[220px] sm:h-[220px] rounded-full border-2 border-yellow-500/60 flex items-center justify-center overflow-hidden ${intro ? "intro-ring-2" : ""}`}>
+            <div className={`relative mx-auto w-[160px] h-[160px] sm:w-[220px] sm:h-[220px] rounded-full border-2 border-yellow-500/60 flex items-center justify-center overflow-hidden ${intro ? "intro-ring-2" : ""}`}>
               <div className="ring-breathe border-yellow-500/70" />
               <div className="glow-layer glow-strong glow-yellow" />
               <div className="glow-layer glow-yellow" />
@@ -82,7 +82,7 @@ export default function Home() {
 
           {/* 激情（艳红） */}
           <Link href="/play/intimacy" className="group block">
-            <div className={`relative mx-auto w-[180px] h-[180px] sm:w-[220px] sm:h-[220px] rounded-full border-2 border-rose-600/60 flex items-center justify-center overflow-hidden ${intro ? "intro-ring-3" : ""}`}>
+            <div className={`relative mx-auto w-[160px] h-[160px] sm:w-[220px] sm:h-[220px] rounded-full border-2 border-rose-600/60 flex items-center justify-center overflow-hidden ${intro ? "intro-ring-3" : ""}`}>
               <div className="ring-breathe border-rose-600/70" />
               <div className="glow-layer glow-strong glow-rose" />
               <div className="glow-layer glow-rose" />

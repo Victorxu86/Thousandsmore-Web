@@ -53,24 +53,63 @@ export default function AdminPage() {
   }
 
   function parsePaste(text: string): PromptRow[] {
-    // 支持从表格或多行粘贴：id\tcategory_id\ttype\ttext\tis_published\tis_trial\ttopic
+    // 支持粘贴格式：
+    // 1) 7列（中文）：id\tcategory_id\ttype\ttext\tis_published\tis_trial\ttopic
+    // 2) 8列（中英）：id\tcategory_id\ttype\ttext_zh\ttext_en\tis_published\tis_trial\ttopic
+    // 3) 4列（英文增量）：id\tcategory_id\ttype\ttext_en（仅更新 text_en）
+    // 4) 2列（英文增量）：id\ttext_en（仅更新 text_en）
     const rows = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     const parsed: PromptRow[] = [];
     for (const line of rows) {
-      const cols = line.split(/\t|\s{2,}|,\s?/); // tab / 多空格 / 逗号
-      if (cols.length < 4) continue;
-      const [id, category_id, type, ...rest] = cols;
-      const textCol = rest.join(" ");
-      parsed.push({
-        id,
-        category_id,
-        type: normalizeType(type),
-        text: textCol,
-        text_en: undefined,
-        is_published: true,
-        is_trial: false,
-        topic: null,
-      });
+      const useTabs = line.includes("\t");
+      const cols = useTabs ? line.split("\t") : line.split(/\s{2,}|,\s?/);
+      if (cols.length >= 8) {
+        // 8列：中英双语
+        const id = cols[0]?.trim();
+        const category_id = cols[1]?.trim();
+        const type = cols[2]?.trim();
+        const textZh = cols[3] ?? "";
+        const textEn = cols[4] ?? "";
+        const isPub = (cols[5] ?? "true").toLowerCase() === "true";
+        const isTrial = (cols[6] ?? "false").toLowerCase() === "true";
+        const topic = (cols[7] ?? "").trim() || null;
+        parsed.push({ id, category_id, type: normalizeType(type), text: textZh, text_en: textEn, is_published: isPub, is_trial: isTrial, topic });
+        continue;
+      }
+      if (cols.length === 7) {
+        // 7列：仅中文
+        const id = cols[0]?.trim();
+        const category_id = cols[1]?.trim();
+        const type = cols[2]?.trim();
+        const textZh = cols[3] ?? "";
+        const isPub = (cols[4] ?? "true").toLowerCase() === "true";
+        const isTrial = (cols[5] ?? "false").toLowerCase() === "true";
+        const topic = (cols[6] ?? "").trim() || null;
+        parsed.push({ id, category_id, type: normalizeType(type), text: textZh, text_en: undefined, is_published: isPub, is_trial: isTrial, topic });
+        continue;
+      }
+      if (cols.length === 4) {
+        // 4列：英文增量（仅更新 text_en） id, category_id, type, text_en
+        const id = cols[0]?.trim();
+        const textEn = cols[3] ?? "";
+        parsed.push({ id, category_id: cols[1]?.trim() || "", type: normalizeType(cols[2]?.trim() || "question"), text: "", text_en: textEn, is_published: true, is_trial: false, topic: null });
+        continue;
+      }
+      if (cols.length === 2) {
+        // 2列：英文增量（仅更新 text_en） id, text_en
+        const id = cols[0]?.trim();
+        const textEn = cols[1] ?? "";
+        parsed.push({ id, category_id: "", type: "question", text: "", text_en: textEn, is_published: true, is_trial: false, topic: null });
+        continue;
+      }
+      // 兜底（视为旧格式：id, category, type, text...）
+      if (cols.length >= 4) {
+        const id = cols[0]?.trim();
+        const category_id = cols[1]?.trim();
+        const type = cols[2]?.trim();
+        const textCol = cols.slice(3).join(" ");
+        parsed.push({ id, category_id, type: normalizeType(type), text: textCol, text_en: undefined, is_published: true, is_trial: false, topic: null });
+      }
     }
     return parsed;
   }

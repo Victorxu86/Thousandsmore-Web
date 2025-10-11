@@ -99,7 +99,7 @@ export default function AdminPage() {
         // 2列：英文增量（仅更新 text_en） id, text_en
         const id = cols[0]?.trim();
         const textEn = cols[1] ?? "";
-        parsed.push({ id, category_id: "", type: "question", text: "", text_en: textEn, is_published: true, is_trial: false, topic: null });
+        parsed.push({ id, category_id: "intimacy", type: "truth", text: "", text_en: textEn, is_published: true, is_trial: false, topic: null });
         continue;
       }
       // 兜底（视为旧格式：id, category, type, text...）

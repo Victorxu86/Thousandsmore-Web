@@ -31,7 +31,36 @@ export async function POST(req: NextRequest) {
     if (!id) continue;
     map.set(id, { ...map.get(id), ...it, id });
   }
-  const uniqueItems = Array.from(map.values());
+  let uniqueItems = Array.from(map.values());
+
+  // 填充仅含 id+text_en 的记录的必要字段（从现有库读取），避免 FK 报错
+  const toFill = uniqueItems.filter((x) => !x.category_id || !x.type);
+  if (toFill.length > 0) {
+    const ids = toFill.map((x) => x.id);
+    const { data: existing, error: qerr } = await supabase
+      .from("prompts")
+      .select("id, category_id, type, text, is_published, is_trial, topic")
+      .in("id", ids);
+    if (qerr) return NextResponse.json({ error: qerr.message }, { status: 500 });
+    const exMap = new Map<string, any>();
+    for (const r of existing || []) exMap.set(r.id, r);
+    uniqueItems = uniqueItems.map((x) => {
+      if (x.category_id && x.type) return x;
+      const ex = exMap.get(x.id);
+      if (!ex) {
+        // 不存在的 id 且缺字段，跳过该条，避免违反外键
+        return null as any;
+      }
+      return {
+        ...ex,
+        ...x,
+        id: x.id,
+        category_id: ex.category_id,
+        type: ex.type,
+      };
+    }).filter(Boolean);
+  }
+
   const { error } = await supabase.from("prompts").upsert(uniqueItems, { onConflict: "id" });
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json({ ok: true, count: items.length });

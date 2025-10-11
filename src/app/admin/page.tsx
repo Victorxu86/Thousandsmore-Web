@@ -153,7 +153,23 @@ export default function AdminPage() {
         <div className="mt-2 flex items-center gap-2">
           <button className="px-3 py-2 rounded border hover:bg-black/5" onClick={() => {
             const parsed = parsePaste(paste);
-            if (parsed.length) setItems((prev) => [...parsed, ...prev]);
+            if (parsed.length) {
+              setItems((prev) => {
+                const byId = new Map<string, PromptRow>();
+                for (const it of prev) byId.set(it.id.trim(), it);
+                // 最新粘贴的覆盖旧记录（可用于英文增量）
+                for (const it of parsed) {
+                  const id = it.id.trim();
+                  const existing = byId.get(id);
+                  if (existing) {
+                    byId.set(id, { ...existing, ...it, id });
+                  } else {
+                    byId.set(id, { ...it, id });
+                  }
+                }
+                return Array.from(byId.values());
+              });
+            }
           }}>解析并追加</button>
           <button className="px-3 py-2 rounded border hover:bg-black/5" onClick={() => setPaste("")}>清空输入</button>
         </div>

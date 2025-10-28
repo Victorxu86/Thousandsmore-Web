@@ -172,28 +172,45 @@ export default function AdminPage() {
         <summary className="cursor-pointer text-sm">批量粘贴导入（推荐 9 列固定模板）</summary>
         <textarea className="w-full h-28 rounded border p-2 mt-2" placeholder={"id\tcategory_id\ttype\ttext_zh\ttext_en\tis_published\tis_trial\ttopic\t操作(忽略)"} value={paste} onChange={(e) => setPaste(e.target.value)} />
         <div className="mt-2 flex items-center gap-2">
-          <button className="px-3 py-2 rounded border hover:bg-black/5" onClick={() => {
+          <button className="px-3 py-2 rounded border hover:bg-black/5" onClick={async () => {
             const parsed = parsePaste(paste);
-            if (parsed.length) {
+            if (!parsed.length) return;
+            setLoading(true); setMessage("");
+            try {
+              // 先更新本地列表，便于用户立即看到结果
               setItems((prev) => {
                 const byId = new Map<string, PromptRow>();
                 for (const it of prev) byId.set(it.id.trim(), it);
-                // 最新粘贴的覆盖旧记录（可用于英文增量）
                 for (const it of parsed) {
                   const id = it.id.trim();
                   const existing = byId.get(id);
-                  if (existing) {
-                    byId.set(id, { ...existing, ...it, id });
-                  } else {
-                    byId.set(id, { ...it, id });
-                  }
+                  if (existing) byId.set(id, { ...existing, ...it, id });
+                  else byId.set(id, { ...it, id });
                 }
-                const merged = Array.from(byId.values());
-                return merged;
+                return Array.from(byId.values());
               });
-              setMessage(`解析并追加成功（${parsed.length} 条），当前共 ${items.length + parsed.length} 条`);
+              setMessage(`解析并追加成功（${parsed.length} 条），正在保存到数据库...`);
+              // 仅将本次解析出来的条目写入数据库，避免一次提交过大
+              const res = await fetch(`/api/admin/prompts`, {
+                method: "POST",
+                headers: { "content-type": "application/json", "x-admin-token": adminToken },
+                body: JSON.stringify({ items: parsed }),
+              });
+              const data = await res.json();
+              if (!res.ok) throw new Error(data.error || "保存失败");
+              setMessage(`解析并追加成功（${parsed.length} 条），已保存 ${data.count} 条`);
+              // 保存成功后刷新一次，确保与 Supabase 同步（含 >1000 的完整数据）
+              await load();
               // 跳到最后一页便于检查新增
-              setPage(Math.floor((items.length + parsed.length - 1) / pageSize));
+              setPage((p)=>{
+                const total = (items.length + parsed.length);
+                return Math.max(0, Math.floor((total - 1) / pageSize));
+              });
+            } catch (e: unknown) {
+              const msg = e instanceof Error ? e.message : String(e);
+              setMessage(msg || "网络错误");
+            } finally {
+              setLoading(false);
             }
           }}>解析并追加</button>
           <button className="px-3 py-2 rounded border hover:bg-black/5" onClick={() => setPaste("")}>清空输入</button>

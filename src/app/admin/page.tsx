@@ -135,6 +135,7 @@ export default function AdminPage() {
   async function save() {
     setLoading(true); setMessage("");
     try {
+      if (!adminToken) throw new Error("请先输入 Admin Token");
       const payload = { items };
       const res = await fetch(`/api/admin/prompts`, { method: "POST", headers: { "content-type": "application/json", "x-admin-token": adminToken }, body: JSON.stringify(payload) });
       const data = await res.json();
@@ -177,6 +178,7 @@ export default function AdminPage() {
             if (!parsed.length) return;
             setLoading(true); setMessage("");
             try {
+              if (!adminToken) throw new Error("请先输入 Admin Token");
               // 先更新本地列表，便于用户立即看到结果
               setItems((prev) => {
                 const byId = new Map<string, PromptRow>();

@@ -5,7 +5,7 @@ export const datingMeta: CategoryMeta = {
   id: "dating",
   name: "朋友",
   description: "",
-  allowedTypes: ["question"],
+  allowedTypes: ["truth"],
 };
 
 export const datingCategory: Category = {

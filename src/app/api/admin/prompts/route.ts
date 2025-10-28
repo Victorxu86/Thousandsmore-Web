@@ -8,11 +8,28 @@ export async function GET(req: NextRequest) {
   const supabase = getSupabaseAdmin();
   const { searchParams } = new URL(req.url);
   const category = searchParams.get("category") || undefined;
-  let q = supabase.from("prompts").select("id,category_id,type,text,text_en,is_published,is_trial,topic").order("category_id").order("id");
-  if (category) q = q.eq("category_id", category);
-  const { data, error } = await q;
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ items: data || [] });
+  // PostgREST 默认每请求最多返回 ~1000 行，这里分页抓取直至取完
+  const PAGE_SIZE = 1000;
+  const items: any[] = [];
+  let page = 0;
+  // 循环分页读取，直到本页数量小于 PAGE_SIZE
+  // 注意：每次都重建查询构造器，避免链式状态污染
+  while (true) {
+    let q = supabase
+      .from("prompts")
+      .select("id,category_id,type,text,text_en,is_published,is_trial,topic")
+      .order("category_id")
+      .order("id")
+      .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1);
+    if (category) q = q.eq("category_id", category);
+    const { data, error } = await q;
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    const rows = data || [];
+    items.push(...rows);
+    if (rows.length < PAGE_SIZE) break;
+    page += 1;
+  }
+  return NextResponse.json({ items });
 }
 
 export async function POST(req: NextRequest) {
@@ -61,9 +78,15 @@ export async function POST(req: NextRequest) {
     }).filter(Boolean);
   }
 
-  const { error } = await supabase.from("prompts").upsert(uniqueItems, { onConflict: "id" });
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ ok: true, count: items.length });
+  // Supabase/PostgREST 对每次写入也存在单请求行数和负载大小限制
+  // 分批 upsert，避免超过 ~1000 行导致部分未写入
+  const BATCH_SIZE = 1000;
+  for (let i = 0; i < uniqueItems.length; i += BATCH_SIZE) {
+    const chunk = uniqueItems.slice(i, i + BATCH_SIZE);
+    const { error } = await supabase.from("prompts").upsert(chunk, { onConflict: "id" });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  return NextResponse.json({ ok: true, count: uniqueItems.length });
 }
 
 export async function DELETE(req: NextRequest) {

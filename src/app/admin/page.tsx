@@ -53,16 +53,30 @@ export default function AdminPage() {
   }
 
   function parsePaste(text: string): PromptRow[] {
-    // 支持粘贴格式：
-    // 1) 7列（中文）：id\tcategory_id\ttype\ttext\tis_published\tis_trial\ttopic
-    // 2) 8列（中英）：id\tcategory_id\ttype\ttext_zh\ttext_en\tis_published\tis_trial\ttopic
-    // 3) 4列（英文增量）：id\tcategory_id\ttype\ttext_en（仅更新 text_en）
-    // 4) 2列（英文增量）：id\ttext_en（仅更新 text_en）
+    // 支持粘贴格式（优先推荐 9 列固定模板）：
+    // 1) 9列（推荐）：id	category_id	type	text_zh	text_en	is_published	is_trial	topic	操作(忽略)
+    // 2) 8列（中英）：id	category_id	type	text_zh	text_en	is_published	is_trial	topic
+    // 3) 7列（仅中文）：id	category_id	type	text	is_published	is_trial	topic
+    // 4) 4列（英文增量）：id	category_id	type	text_en（仅更新 text_en）
+    // 5) 2列（英文增量）：id	text_en（仅更新 text_en）
     const rows = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
     const parsed: PromptRow[] = [];
     for (const line of rows) {
       const useTabs = line.includes("\t");
       const cols = useTabs ? line.split("\t") : line.split(/\s{2,}|,\s?/);
+      if (cols.length >= 9) {
+        // 9列：最后一列“操作”忽略
+        const id = cols[0]?.trim();
+        const category_id = cols[1]?.trim();
+        const type = cols[2]?.trim();
+        const textZh = cols[3] ?? "";
+        const textEn = cols[4] ?? "";
+        const isPub = (cols[5] ?? "true").toLowerCase() === "true";
+        const isTrial = (cols[6] ?? "false").toLowerCase() === "true";
+        const topic = (cols[7] ?? "").trim() || null;
+        parsed.push({ id, category_id, type: normalizeType(type), text: textZh, text_en: textEn, is_published: isPub, is_trial: isTrial, topic });
+        continue;
+      }
       if (cols.length >= 8) {
         // 8列：中英双语
         const id = cols[0]?.trim();
@@ -148,8 +162,8 @@ export default function AdminPage() {
       {message && <div className="mb-4 text-sm opacity-80">{message}</div>}
 
       <details className="mb-4">
-        <summary className="cursor-pointer text-sm">批量粘贴导入（每行：id  分类 type  文本 ...）</summary>
-        <textarea className="w-full h-28 rounded border p-2 mt-2" placeholder="dt-100\tdating\tquestion\t你的问题文本..." value={paste} onChange={(e) => setPaste(e.target.value)} />
+        <summary className="cursor-pointer text-sm">批量粘贴导入（推荐 9 列固定模板）</summary>
+        <textarea className="w-full h-28 rounded border p-2 mt-2" placeholder={"id\tcategory_id\ttype\ttext_zh\ttext_en\tis_published\tis_trial\ttopic\t操作(忽略)"} value={paste} onChange={(e) => setPaste(e.target.value)} />
         <div className="mt-2 flex items-center gap-2">
           <button className="px-3 py-2 rounded border hover:bg-black/5" onClick={() => {
             const parsed = parsePaste(paste);

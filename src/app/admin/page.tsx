@@ -19,6 +19,8 @@ export default function AdminPage() {
   const [message, setMessage] = useState<string>("");
   const [paste, setPaste] = useState<string>("");
   const [category, setCategory] = useState<string>("");
+  const pageSize = 100;
+  const [page, setPage] = useState<number>(0);
 
   useEffect(() => {
     try {
@@ -35,6 +37,8 @@ export default function AdminPage() {
       const data = await res.json();
       if (res.ok) {
         setItems(data.items || []);
+        setPage(0);
+        setMessage(`已加载 ${Array.isArray(data.items)?data.items.length:0} 条`);
         try { sessionStorage.setItem("adminToken", adminToken); } catch {}
       } else {
         setMessage(data.error || "加载失败");
@@ -136,6 +140,8 @@ export default function AdminPage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "保存失败");
       setMessage(`已保存 ${data.count} 条`);
+      // 保存成功后重新加载，确保界面显示最新总数（>1000 也能完整展示）
+      await load();
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       setMessage(msg || "网络错误");
@@ -147,7 +153,7 @@ export default function AdminPage() {
   return (
     <div className="min-h-screen p-6 max-w-5xl mx-auto">
       <h1 className="text-2xl font-semibold mb-4">题库管理</h1>
-      <div className="mb-4 flex flex-wrap items-center gap-3 text-sm">
+      <div className="mb-2 flex flex-wrap items-center gap-3 text-sm">
         <input className="rounded border px-3 py-2" placeholder="Admin Token" value={adminToken} onChange={(e) => setAdminToken(e.target.value)} />
         <select className="rounded border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value)}>
           <option value="">全部分类</option>
@@ -158,6 +164,7 @@ export default function AdminPage() {
         <button onClick={load} className="px-3 py-2 rounded border hover:bg-black/5">加载</button>
         <button onClick={save} disabled={loading} className="px-3 py-2 rounded border hover:bg-black/5">保存</button>
       </div>
+      <div className="mb-4 text-sm opacity-80">当前记录数：{items.length} 条</div>
 
       {message && <div className="mb-4 text-sm opacity-80">{message}</div>}
 
@@ -181,8 +188,12 @@ export default function AdminPage() {
                     byId.set(id, { ...it, id });
                   }
                 }
-                return Array.from(byId.values());
+                const merged = Array.from(byId.values());
+                return merged;
               });
+              setMessage(`解析并追加成功（${parsed.length} 条），当前共 ${items.length + parsed.length} 条`);
+              // 跳到最后一页便于检查新增
+              setPage(Math.floor((items.length + parsed.length - 1) / pageSize));
             }
           }}>解析并追加</button>
           <button className="px-3 py-2 rounded border hover:bg-black/5" onClick={() => setPaste("")}>清空输入</button>
@@ -205,14 +216,14 @@ export default function AdminPage() {
             </tr>
           </thead>
           <tbody>
-            {items.map((r, idx) => (
+            {items.slice(page * pageSize, page * pageSize + pageSize).map((r, idx) => (
               <tr key={r.id} className="border-t">
                 <td className="p-2"><input className="w-36 rounded border px-2 py-1" value={r.id} onChange={(e) => {
-                  const v = e.target.value; setItems((prev) => prev.map((x, i) => i===idx?{...x,id:v}:x));
+                  const v = e.target.value; setItems((prev) => prev.map((x, i) => (i=== (page*pageSize+idx))?{...x,id:v}:x));
                 }} /></td>
                 <td className="p-2">
                   <select className="rounded border px-2 py-1" value={r.category_id} onChange={(e)=>{
-                    const v=e.target.value; setItems((p)=>p.map((x,i)=>i===idx?{...x,category_id:v}:x));
+                    const v=e.target.value; setItems((p)=>p.map((x,i)=>i===(page*pageSize+idx)?{...x,category_id:v}:x));
                   }}>
                     <option value="dating">dating</option>
                     <option value="party">party</option>
@@ -221,7 +232,7 @@ export default function AdminPage() {
                 </td>
                 <td className="p-2">
                   <select className="rounded border px-2 py-1" value={r.type} onChange={(e)=>{
-                    const v=e.target.value as PromptRow["type"]; setItems((p)=>p.map((x,i)=>i===idx?{...x,type:v}:x));
+                    const v=e.target.value as PromptRow["type"]; setItems((p)=>p.map((x,i)=>i===(page*pageSize+idx)?{...x,type:v}:x));
                   }}>
                     <option value="question">question</option>
                     <option value="truth">truth</option>
@@ -229,23 +240,23 @@ export default function AdminPage() {
                   </select>
                 </td>
                 <td className="p-2"><textarea className="w-full h-16 rounded border px-2 py-1" value={r.text} onChange={(e)=>{
-                  const v=e.target.value; setItems((p)=>p.map((x,i)=>i===idx?{...x,text:v}:x));
+                  const v=e.target.value; setItems((p)=>p.map((x,i)=>i===(page*pageSize+idx)?{...x,text:v}:x));
                 }} /></td>
                 <td className="p-2"><textarea className="w-full h-16 rounded border px-2 py-1" value={r.text_en||""} onChange={(e)=>{
-                  const v=e.target.value; setItems((p)=>p.map((x,i)=>i===idx?{...x,text_en:v}:x));
+                  const v=e.target.value; setItems((p)=>p.map((x,i)=>i===(page*pageSize+idx)?{...x,text_en:v}:x));
                 }} /></td>
                 <td className="p-2">
                   <input type="checkbox" checked={r.is_published} onChange={(e)=>{
-                    const v=e.target.checked; setItems((p)=>p.map((x,i)=>i===idx?{...x,is_published:v}:x));
+                    const v=e.target.checked; setItems((p)=>p.map((x,i)=>i===(page*pageSize+idx)?{...x,is_published:v}:x));
                   }} />
                 </td>
                 <td className="p-2">
                   <input type="checkbox" checked={r.is_trial} onChange={(e)=>{
-                    const v=e.target.checked; setItems((p)=>p.map((x,i)=>i===idx?{...x,is_trial:v}:x));
+                    const v=e.target.checked; setItems((p)=>p.map((x,i)=>i===(page*pageSize+idx)?{...x,is_trial:v}:x));
                   }} />
                 </td>
                 <td className="p-2"><input className="w-28 rounded border px-2 py-1" value={r.topic || ""} onChange={(e)=>{
-                  const v=e.target.value || null; setItems((p)=>p.map((x,i)=>i===idx?{...x,topic:v}:x));
+                  const v=e.target.value || null; setItems((p)=>p.map((x,i)=>i===(page*pageSize+idx)?{...x,topic:v}:x));
                 }} /></td>
                 <td className="p-2">
                   <button className="px-2 py-1 rounded border hover:bg-black/5" onClick={async ()=>{
@@ -257,6 +268,19 @@ export default function AdminPage() {
             ))}
           </tbody>
         </table>
+      </div>
+      {/* 分页控制 */}
+      <div className="mt-3 flex items-center gap-2 text-sm">
+        {(() => {
+          const totalPages = Math.max(1, Math.ceil(items.length / pageSize));
+          return (
+            <>
+              <button className="px-2 py-1 rounded border hover:bg-black/5" disabled={page<=0} onClick={()=>setPage((p)=>Math.max(0,p-1))}>上一页</button>
+              <span>第 {page+1} / {totalPages} 页</span>
+              <button className="px-2 py-1 rounded border hover:bg-black/5" disabled={page>=totalPages-1} onClick={()=>setPage((p)=>Math.min(totalPages-1,p+1))}>下一页</button>
+            </>
+          );
+        })()}
       </div>
     </div>
   );

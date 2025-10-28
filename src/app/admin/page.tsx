@@ -217,7 +217,9 @@ export default function AdminPage() {
               });
               const data = await res.json();
               if (!res.ok) throw new Error(data.error || "保存失败");
-              setMessage(`解析并追加成功（${parsed.length} 条），已保存 ${data.count} 条`);
+              const saved = typeof data.count === 'number' ? data.count : (data.saved ?? 0);
+              const skipped = typeof data.skipped === 'number' ? data.skipped : 0;
+              setMessage(`解析并追加成功（${parsed.length} 条），已保存 ${saved} 条${skipped?`，跳过 ${skipped} 条`:''}`);
               // 保存成功后刷新一次，确保与 Supabase 同步（含 >1000 的完整数据）
               await load();
               // 跳到最后一页便于检查新增

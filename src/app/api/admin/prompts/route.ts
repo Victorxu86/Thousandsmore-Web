@@ -95,7 +95,9 @@ export async function POST(req: NextRequest) {
   const uniqueItems: MinimalItem[] = Array.from(map.values());
 
   // 填充仅含 id+text_en 的记录的必要字段（从现有库读取），避免 FK 报错
+  // 尝试补全缺失字段，再与已完整字段一起统一 upsert
   const toFill = uniqueItems.filter((x) => !x.category_id || !x.type);
+  let exMap: Map<string, ExistingRow> | null = null;
   if (toFill.length > 0) {
     const ids = toFill.map((x) => x.id);
     const { data: existing, error: qerr } = await supabase
@@ -103,63 +105,50 @@ export async function POST(req: NextRequest) {
       .select("id, category_id, type, text, is_published, is_trial, topic")
       .in("id", ids);
     if (qerr) return NextResponse.json({ error: qerr.message }, { status: 500 });
-    const exMap = new Map<string, ExistingRow>();
+    exMap = new Map<string, ExistingRow>();
     for (const r of (existing || []) as ExistingRow[]) exMap.set(r.id, r);
-    const prepared: Array<PromptUpsert | null> = uniqueItems.map((x) => {
-      if (x.category_id && x.type) {
-        return {
-          id: x.id,
-          category_id: x.category_id,
-          type: x.type,
-          text: x.text ?? "",
-          text_en: x.text_en ?? null,
-          is_published: x.is_published ?? true,
-          is_trial: x.is_trial ?? false,
-          topic: x.topic ?? null,
-        } satisfies PromptUpsert;
-      }
-      const ex = exMap.get(x.id);
-      if (!ex) return null; // 不存在的 id 且缺字段，跳过该条
-      return {
-        id: x.id,
-        category_id: ex.category_id,
-        type: ex.type,
-        text: x.text ?? ex.text,
-        text_en: x.text_en ?? null,
-        is_published: x.is_published ?? ex.is_published,
-        is_trial: x.is_trial ?? ex.is_trial,
-        topic: x.topic ?? ex.topic,
-      } satisfies PromptUpsert;
-    });
-    const filtered = prepared.filter((v): v is PromptUpsert => v !== null);
-    // 用补全后的集合替换为最终要 upsert 的集合
-    const BATCH_SIZE = 1000;
-    for (let i = 0; i < filtered.length; i += BATCH_SIZE) {
-      const chunk = filtered.slice(i, i + BATCH_SIZE);
-      const { error } = await supabase.from("prompts").upsert(chunk, { onConflict: "id" });
-      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-    }
-    return NextResponse.json({ ok: true, count: filtered.length });
   }
 
-  // 如果无需补全，直接将 uniqueItems 规范化后分批 upsert
-  const normalized: PromptUpsert[] = uniqueItems.map((x) => ({
-    id: x.id,
-    category_id: x.category_id!,
-    type: x.type!,
-    text: x.text ?? "",
-    text_en: x.text_en ?? null,
-    is_published: x.is_published ?? true,
-    is_trial: x.is_trial ?? false,
-    topic: x.topic ?? null,
-  }));
+  const finalUpserts: PromptUpsert[] = [];
+  const skippedIds: string[] = [];
+  for (const x of uniqueItems) {
+    if (x.category_id && x.type) {
+      finalUpserts.push({
+        id: x.id,
+        category_id: x.category_id,
+        type: x.type,
+        text: x.text ?? "",
+        text_en: x.text_en ?? null,
+        is_published: x.is_published ?? true,
+        is_trial: x.is_trial ?? false,
+        topic: x.topic ?? null,
+      });
+      continue;
+    }
+    const ex = exMap?.get(x.id) || null;
+    if (!ex) {
+      skippedIds.push(x.id);
+      continue;
+    }
+    finalUpserts.push({
+      id: x.id,
+      category_id: ex.category_id,
+      type: ex.type,
+      text: x.text ?? ex.text,
+      text_en: x.text_en ?? null,
+      is_published: x.is_published ?? ex.is_published,
+      is_trial: x.is_trial ?? ex.is_trial,
+      topic: x.topic ?? ex.topic,
+    });
+  }
+
   const BATCH_SIZE = 1000;
-  for (let i = 0; i < normalized.length; i += BATCH_SIZE) {
-    const chunk = normalized.slice(i, i + BATCH_SIZE);
+  for (let i = 0; i < finalUpserts.length; i += BATCH_SIZE) {
+    const chunk = finalUpserts.slice(i, i + BATCH_SIZE);
     const { error } = await supabase.from("prompts").upsert(chunk, { onConflict: "id" });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   }
-  return NextResponse.json({ ok: true, count: normalized.length });
+  return NextResponse.json({ ok: true, count: finalUpserts.length, skipped: skippedIds.length, skippedIds });
 }
 
 export async function DELETE(req: NextRequest) {

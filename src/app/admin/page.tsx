@@ -164,6 +164,23 @@ export default function AdminPage() {
         </select>
         <button onClick={load} className="px-3 py-2 rounded border hover:bg-black/5">加载</button>
         <button onClick={save} disabled={loading} className="px-3 py-2 rounded border hover:bg-black/5">保存</button>
+        <button onClick={async ()=>{
+          setLoading(true); setMessage("");
+          try {
+            if (!adminToken) throw new Error("请先输入 Admin Token");
+            const res = await fetch(`/api/admin/health`, { headers: { "x-admin-token": adminToken } });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data?.error || data?.db?.error || "检查失败");
+            const envMsg = `Env: URL=${data.env?.hasUrl?'OK':'缺失'}, ServiceKey=${data.env?.hasServiceKey?'OK':'缺失'}`;
+            const dbMsg = `DB: 连接=${data.db?.ok?'OK':'失败'}，prompts=${data.db?.promptsCount ?? '未知'}，text_en列=${data.db?.textEnColumn?'存在':'缺失'}`;
+            setMessage(`${envMsg}；${dbMsg}`);
+          } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : String(e);
+            setMessage(msg || "网络错误");
+          } finally {
+            setLoading(false);
+          }
+        }} className="px-3 py-2 rounded border hover:bg-black/5">检查连接</button>
       </div>
       <div className="mb-4 text-sm opacity-80">当前记录数：{items.length} 条</div>
 

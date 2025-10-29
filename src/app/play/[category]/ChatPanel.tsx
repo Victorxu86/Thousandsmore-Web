@@ -21,12 +21,16 @@ export default function ChatPanel({ theme, currentQuestionId }: Props) {
   const [connecting, setConnecting] = useState(false);
   const [code, setCode] = useState("");
   const [inviteCode, setInviteCode] = useState<string>("");
+  const [directLink, setDirectLink] = useState<string>("");
   const [messages, setMessages] = useState<ChatMsg[]>([]);
   const [input, setInput] = useState("");
   const [typing, setTyping] = useState(false);
   const [peerTyping, setPeerTyping] = useState(false);
   const [quotaUsed, setQuotaUsed] = useState(0);
   const quotaMax = 5;
+  const [showInvite, setShowInvite] = useState(false);
+  const [showJoin, setShowJoin] = useState(false);
+  const [waitingStatus, setWaitingStatus] = useState<"idle"|"waiting"|"joined">("idle");
 
   const clientRef = useRef<Awaited<ReturnType<typeof connectChat>> | null>(null);
   const me = useMemo(() => `u_${Math.random().toString(36).slice(2, 8)}`, []);
@@ -37,17 +41,69 @@ export default function ChatPanel({ theme, currentQuestionId }: Props) {
     setQuotaUsed(0);
   }, [currentQuestionId]);
 
+  // 直达链接自动加入（?code=XXXX）
+  useEffect(() => {
+    try {
+      const usp = new URLSearchParams(window.location.search);
+      const auto = (usp.get("code") || "").toUpperCase();
+      if (auto && !connected && !connecting) {
+        setCode(auto);
+        setShowJoin(false);
+        void handleJoin(auto, true);
+      }
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function handleInvite() {
     const c = genRoomCode(6);
     setInviteCode(c);
     setCode(c);
-  }
-
-  async function handleJoin() {
-    if (!code) return;
+    try {
+      const link = `${window.location.origin}${window.location.pathname}?code=${encodeURIComponent(c)}`;
+      setDirectLink(link);
+    } catch { setDirectLink(""); }
+    setShowInvite(true);
+    setWaitingStatus("waiting");
+    // 邀请方立即连接并监听对方加入
     setConnecting(true);
     try {
-      const client = await connectChat(code);
+      const client = await connectChat(c);
+      clientRef.current = client;
+      try { await client.channel.presence.enter({ me }); } catch {}
+      await client.channel.presence.subscribe("enter", (m) => {
+        if (m.clientId && m.clientId !== client.ably.auth.clientId) {
+          setWaitingStatus("joined");
+          // 2 秒后关闭弹窗
+          setTimeout(() => { setShowInvite(false); }, 2000);
+        }
+      });
+      setConnected(true);
+      // 订阅消息/typing（邀请方也要）
+      await client.channel.subscribe("msg", (m) => {
+        const data = m.data as { id: string; sender: string; text: string; ts: number; q?: string };
+        if (currentQuestionId && data.q && data.q !== currentQuestionId) return;
+        setMessages((prev) => [...prev, { id: data.id, sender: data.sender, text: data.text, ts: data.ts }]);
+      });
+      await client.channel.subscribe("typing", (m) => {
+        const data = m.data as { sender: string; typing: boolean };
+        if (data.sender === me) return;
+        setPeerTyping(!!data.typing);
+        if (data.typing) setTimeout(() => setPeerTyping(false), 3000);
+      });
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setConnecting(false);
+    }
+  }
+
+  async function handleJoin(c?: string, silent?: boolean) {
+    const joinCode = (c || code).trim();
+    if (!joinCode) return;
+    setConnecting(true);
+    try {
+      const client = await connectChat(joinCode);
       clientRef.current = client;
       // presence 加入
       try { await client.channel.presence.enter({ me }); } catch {}
@@ -68,6 +124,7 @@ export default function ChatPanel({ theme, currentQuestionId }: Props) {
         }
       });
       setConnected(true);
+      if (!silent) setShowJoin(false);
     } catch (e) {
       console.error(e);
     } finally {
@@ -104,14 +161,22 @@ export default function ChatPanel({ theme, currentQuestionId }: Props) {
       {/* 邀请/加入控制条 */}
       <div className="flex flex-wrap items-center gap-2 justify-center">
         <button onClick={handleInvite} className={`px-3 py-2 rounded-full border text-sm ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent}`}>邀请朋友</button>
-        <div className="flex items-center gap-2">
-          <input value={code} onChange={(e)=>setCode(e.target.value.toUpperCase())} placeholder="输入房间码" className={`rounded-full border px-3 py-2 text-sm ${theme.borderAccent}`} />
-          <button onClick={handleJoin} disabled={connecting || connected} className={`px-3 py-2 rounded-full border text-sm ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent}`}>{connected?"已加入":"加入对话"}</button>
-        </div>
+        <button onClick={()=>setShowJoin(true)} disabled={connecting || connected} className={`px-3 py-2 rounded-full border text-sm ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent}`}>{connected?"已加入":"加入对话"}</button>
       </div>
 
-      {inviteCode && (
-        <div className={`mt-2 text-center text-sm opacity-80`}>房间码：<span className="font-mono tracking-wider">{inviteCode}</span>（复制给朋友）</div>
+      {/* 加入对话弹窗 */}
+      {showJoin && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={()=>setShowJoin(false)} />
+          <div className={`relative z-10 w-[92%] max-w-md rounded-xl border ${theme.borderAccent} bg-black/85 text-white p-5 ${theme.shadowAccent}`}>
+            <h2 className="text-lg font-semibold mb-3">加入对话</h2>
+            <input value={code} onChange={(e)=>setCode(e.target.value.toUpperCase())} placeholder="输入房间码" className={`w-full rounded-lg border px-3 py-2 text-sm bg-black/40 ${theme.borderAccent}`} />
+            <div className="mt-4 flex items-center justify-end gap-3">
+              <button onClick={()=>setShowJoin(false)} className={`px-3 py-2 rounded-full text-sm border ${theme.borderAccent} ${theme.hoverAccentBg}`}>取消</button>
+              <button onClick={()=>handleJoin()} disabled={connecting || !code} className={`px-4 py-2 rounded-full text-sm bg-purple-600 text-white hover:brightness-110`}>加入</button>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* 聊天面板 */}
@@ -130,6 +195,34 @@ export default function ChatPanel({ theme, currentQuestionId }: Props) {
             <button onClick={send} disabled={quotaUsed>=quotaMax || !input.trim()} className={`px-3 py-2 rounded-full border text-sm ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent}`}>发送</button>
           </div>
           <div className="mt-1 text-right text-xs opacity-70">{quotaUsed}/{quotaMax} 条/题</div>
+        </div>
+      )}
+
+      {/* 邀请弹窗（参考激情页样式） */}
+      {showInvite && (
+        <div className="fixed inset-0 z-40 flex items-center justify-center">
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md" />
+          <div className={`relative z-10 w-[92%] max-w-md rounded-xl border ${theme.borderAccent} bg-black/85 text-white p-5 ${theme.shadowAccent}`}>
+            <h2 className="text-lg font-semibold mb-2">邀请朋友加入</h2>
+            <div className="text-sm opacity-80 mb-3">将房间码或直达链接发给对方，进入页面后输入即可加入。</div>
+            <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <span className="shrink-0 text-xs opacity-70">房间码</span>
+                <div className="flex-1 font-mono tracking-wider text-base">{inviteCode}</div>
+                <button onClick={()=>{ try { navigator.clipboard.writeText(inviteCode); } catch {} }} className={`px-2 py-1 rounded-full border text-xs ${theme.borderAccent} ${theme.hoverAccentBg}`}>复制</button>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="shrink-0 text-xs opacity-70">直达链接</span>
+                <div className="flex-1 truncate text-xs">{directLink}</div>
+                <button onClick={()=>{ try { navigator.clipboard.writeText(directLink); } catch {} }} className={`px-2 py-1 rounded-full border text-xs ${theme.borderAccent} ${theme.hoverAccentBg}`}>复制</button>
+              </div>
+            </div>
+            <div className="mt-4 h-10 flex items-center justify-center">
+              {waitingStatus === "waiting" && <div className="text-sm opacity-80 animate-pulse">等待加入中...</div>}
+              {waitingStatus === "joined" && <div className="text-sm text-green-400">对方已加入</div>}
+            </div>
+            <div className="mt-2 text-xs opacity-70 leading-5">提示：每题每人最多可发送 5 条消息。邀请码/链接有效期 30 分钟。</div>
+          </div>
         </div>
       )}
     </div>

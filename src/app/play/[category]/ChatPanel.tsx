@@ -68,6 +68,12 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
   }, []);
 
   async function handleInvite() {
+    // 若30分钟有效期内：复用同一房间码与直达链接，仅打开弹窗
+    if (inviteCode && inviteUntil > Date.now()) {
+      setShowInvite(true);
+      return;
+    }
+
     const c = genRoomCode(6);
     setInviteCode(c);
     setCode(c);
@@ -294,6 +300,9 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
           <span className="font-mono tracking-wider">{inviteCode}</span>
           <button onClick={()=>{ try { navigator.clipboard.writeText(inviteCode); } catch {} }} className={`ml-1 px-2 py-1 rounded-full border text-xs ${theme.borderAccent} ${theme.hoverAccentBg}`}>复制</button>
           <div className="flex-1" />
+          {directLink && (
+            <button onClick={()=>{ try { navigator.clipboard.writeText(directLink); } catch {} }} className={`mr-2 px-2 py-1 rounded-full border text-xs ${theme.borderAccent} ${theme.hoverAccentBg}`}>复制链接</button>
+          )}
           <span className="text-xs opacity-70">{Math.max(0, Math.ceil((inviteUntil - nowMs)/60000))}m</span>
         </div>
       )}

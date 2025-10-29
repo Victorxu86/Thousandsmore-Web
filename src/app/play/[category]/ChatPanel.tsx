@@ -135,10 +135,12 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
       const client = await connectChat(joinCode);
       // 限制 2 人：进入 presence 前检查当前在线人数
       try {
+        await client.channel.attach();
         const members = await client.channel.presence.get();
         if ((members?.length || 0) >= 2) {
           await client.ably.close();
           setJoinError("房间已满（最多 2 人）");
+          setShowJoin(true); // 显示错误
           return;
         }
       } catch {}
@@ -173,6 +175,8 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
       if (!silent) setShowJoin(false);
     } catch (e) {
       console.error(e);
+      setJoinError("加入失败，请稍后再试");
+      setShowJoin(true);
     } finally {
       setConnecting(false);
     }

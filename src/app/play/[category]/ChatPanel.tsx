@@ -53,7 +53,7 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
     return () => clearInterval(t);
   }, []);
 
-  // 直达链接自动加入（?code=XXXX）
+  // 直达链接自动加入（?code=XXXX），失败则兜底弹出加入弹窗
   useEffect(() => {
     try {
       const usp = new URLSearchParams(window.location.search);
@@ -62,6 +62,13 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
         setCode(auto);
         setShowJoin(false);
         void handleJoin(auto, true);
+        // 3 秒兜底：若仍未连接，打开加入弹窗
+        setTimeout(() => {
+          if (!connected) {
+            setConnecting(false);
+            setShowJoin(true);
+          }
+        }, 3000);
       }
     } catch {}
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -211,7 +218,7 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
       {/* 邀请/加入控制条 */}
       <div className="flex flex-wrap items-center gap-2 justify-center">
         <button onClick={handleInvite} className={`px-3 py-2 rounded-full border text-sm ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent}`}>邀请朋友</button>
-        <button onClick={()=>{ setJoinError(""); setShowJoin(true); }} disabled={connecting || connected} className={`px-3 py-2 rounded-full border text-sm ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent}`}>{connected?"已加入":"加入对话"}</button>
+        <button onClick={()=>{ setJoinError(""); setConnecting(false); setShowJoin(true); }} disabled={connected} className={`px-3 py-2 rounded-full border text-sm ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent}`}>{connected?"已加入":"加入对话"}</button>
         {connected && (
           <button onClick={async ()=>{
             const client = clientRef.current;

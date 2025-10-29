@@ -31,6 +31,7 @@ export default function ChatPanel({ theme, currentQuestionId }: Props) {
   const [showInvite, setShowInvite] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
   const [waitingStatus, setWaitingStatus] = useState<"idle"|"waiting"|"joined">("idle");
+  const [joinError, setJoinError] = useState<string>("");
 
   const clientRef = useRef<Awaited<ReturnType<typeof connectChat>> | null>(null);
   const me = useMemo(() => `u_${Math.random().toString(36).slice(2, 8)}`, []);
@@ -104,6 +105,15 @@ export default function ChatPanel({ theme, currentQuestionId }: Props) {
     setConnecting(true);
     try {
       const client = await connectChat(joinCode);
+      // 限制 2 人：进入 presence 前检查当前在线人数
+      try {
+        const members = await client.channel.presence.get();
+        if ((members?.length || 0) >= 2) {
+          await client.ably.close();
+          setJoinError("房间已满（最多 2 人）");
+          return;
+        }
+      } catch {}
       clientRef.current = client;
       // presence 加入
       try { await client.channel.presence.enter({ me }); } catch {}
@@ -161,16 +171,39 @@ export default function ChatPanel({ theme, currentQuestionId }: Props) {
       {/* 邀请/加入控制条 */}
       <div className="flex flex-wrap items-center gap-2 justify-center">
         <button onClick={handleInvite} className={`px-3 py-2 rounded-full border text-sm ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent}`}>邀请朋友</button>
-        <button onClick={()=>setShowJoin(true)} disabled={connecting || connected} className={`px-3 py-2 rounded-full border text-sm ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent}`}>{connected?"已加入":"加入对话"}</button>
+        <button onClick={()=>{ setJoinError(""); setShowJoin(true); }} disabled={connecting || connected} className={`px-3 py-2 rounded-full border text-sm ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent}`}>{connected?"已加入":"加入对话"}</button>
+        {connected && (
+          <button
+            onClick={async ()=>{
+              const client = clientRef.current;
+              if (client) { try { await client.disconnect(); } catch {} }
+              clientRef.current = null;
+              setConnected(false);
+              setMessages([]);
+              setQuotaUsed(0);
+              setInviteCode("");
+              setDirectLink("");
+              setCode("");
+              setShowInvite(false);
+              setShowJoin(false);
+              setTyping(false);
+              setPeerTyping(false);
+              setWaitingStatus("idle");
+              setJoinError("");
+            }}
+            className={`px-3 py-2 rounded-full border text-sm ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent}`}
+          >退出并清空</button>
+        )}
       </div>
 
       {/* 加入对话弹窗 */}
       {showJoin && (
         <div className="fixed inset-0 z-40 flex items-center justify-center">
-          <div className="fixed inset-0 bg-black/40 backdrop-blur-sm" onClick={()=>setShowJoin(false)} />
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md" onClick={()=>setShowJoin(false)} />
           <div className={`relative z-10 w-[92%] max-w-md rounded-xl border ${theme.borderAccent} bg-black/85 text-white p-5 ${theme.shadowAccent}`}>
             <h2 className="text-lg font-semibold mb-3">加入对话</h2>
             <input value={code} onChange={(e)=>setCode(e.target.value.toUpperCase())} placeholder="输入房间码" className={`w-full rounded-lg border px-3 py-2 text-sm bg-black/40 ${theme.borderAccent}`} />
+            {joinError && <div className="mt-2 text-sm text-rose-400">{joinError}</div>}
             <div className="mt-4 flex items-center justify-end gap-3">
               <button onClick={()=>setShowJoin(false)} className={`px-3 py-2 rounded-full text-sm border ${theme.borderAccent} ${theme.hoverAccentBg}`}>取消</button>
               <button onClick={()=>handleJoin()} disabled={connecting || !code} className={`px-4 py-2 rounded-full text-sm bg-purple-600 text-white hover:brightness-110`}>加入</button>

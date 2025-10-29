@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import type { PromptType } from "@/data/types";
 import { connectChat, genRoomCode } from "@/lib/chat";
 
 type Props = {

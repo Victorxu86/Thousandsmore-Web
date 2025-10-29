@@ -12,7 +12,7 @@ export type ChatClient = {
 export async function connectChat(code: string): Promise<ChatClient> {
   const authUrl = `/api/chat/token?code=${encodeURIComponent(code)}`;
 
-  async function connectWith(options: Ably.Types.ClientOptions, timeoutMs: number): Promise<Ably.RealtimePromise> {
+  async function connectWith(options: Ably.Types.ClientOptions, timeoutMs: number): Promise<Ably.Realtime> {
     const client = new Ably.Realtime.Promise(options);
     await Promise.race([
       new Promise<void>((resolve, reject) => {
@@ -29,7 +29,7 @@ export async function connectChat(code: string): Promise<ChatClient> {
   }
 
   // 尝试 1：常规（含 websocket/xhr_streaming/xhr_polling），超时 8s
-  let ably: Ably.RealtimePromise;
+  let ably: Ably.Realtime;
   try {
     ably = await connectWith({ authUrl, transports: ["web_socket", "xhr_streaming", "xhr_polling"], tls: true }, 8000);
   } catch (e1) {

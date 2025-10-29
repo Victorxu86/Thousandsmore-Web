@@ -6,6 +6,7 @@ import { categories, getCategoryById, getPromptsByType } from "@/data";
 import { getRandomPrompt } from "@/data/prompts";
 import type { Prompt, PromptType } from "@/data/types";
 import { useLang } from "@/lib/lang";
+import ChatPanel from "./ChatPanel";
 
 type PageProps = {
   params: { category: string };
@@ -343,6 +344,9 @@ export default function PlayCategoryPage({ params }: PageProps) {
             {lang === "en" ? "Next" : "下一个"}
           </button>
         </div>
+
+        {/* 底部聊天面板（紫黑主题随分类） */}
+        <ChatPanel theme={theme} currentQuestionId={currentPrompt?.id || null} />
       </div>
     </div>
   );

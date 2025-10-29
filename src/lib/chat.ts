@@ -11,23 +11,33 @@ export type ChatClient = {
 
 export async function connectChat(code: string): Promise<ChatClient> {
   const authUrl = `/api/chat/token?code=${encodeURIComponent(code)}`;
-  const ably = new Ably.Realtime.Promise({
-    authUrl,
-    transports: ["web_socket", "xhr_streaming", "xhr_polling"],
-  });
-  // 等待连接，增加 7 秒超时与失败态监听，避免在受限环境中无响应
-  await Promise.race([
-    new Promise<void>((resolve, reject) => {
-      ably.connection.once("connected", () => resolve());
-      ably.connection.once("failed", () => reject(new Error("failed")));
-      ably.connection.once("suspended", () => reject(new Error("suspended")));
-    }),
-    new Promise<void>((_, reject) => setTimeout(() => reject(new Error("timeout")), 7000)),
-  ]).catch(async (err) => {
-    try { await ably.close(); } catch {}
-    throw err;
-  });
-  // 取回 token 接口返回的频道名（可通过首条 http 获取），这里简化：客户端再 fetch 一次拿 channel
+
+  async function connectWith(options: Ably.Types.ClientOptions, timeoutMs: number): Promise<Ably.RealtimePromise> {
+    const client = new Ably.Realtime.Promise(options);
+    await Promise.race([
+      new Promise<void>((resolve, reject) => {
+        client.connection.once("connected", () => resolve());
+        client.connection.once("failed", () => reject(new Error("failed")));
+        // 不把 suspended 当作最终失败，给网络切换留余地
+      }),
+      new Promise<void>((_, reject) => setTimeout(() => reject(new Error("timeout")), timeoutMs)),
+    ]).catch(async (err) => {
+      try { await client.close(); } catch {}
+      throw err;
+    });
+    return client;
+  }
+
+  // 尝试 1：常规（含 websocket/xhr_streaming/xhr_polling），超时 8s
+  let ably: Ably.RealtimePromise;
+  try {
+    ably = await connectWith({ authUrl, transports: ["web_socket", "xhr_streaming", "xhr_polling"], tls: true }, 8000);
+  } catch (e1) {
+    // 尝试 2：仅 xhr_polling，超时 12s（适配极端受限网络）
+    ably = await connectWith({ authUrl, transports: ["xhr_polling"], tls: true }, 12000);
+  }
+
+  // 取回频道名
   const metaRes = await fetch(authUrl);
   const meta = await metaRes.json();
   if (!metaRes.ok) throw new Error(meta.error || "auth failed");

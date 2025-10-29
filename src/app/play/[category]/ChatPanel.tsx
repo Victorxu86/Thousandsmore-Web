@@ -182,7 +182,8 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
       if (!silent) setShowJoin(false);
     } catch (e) {
       console.error(e);
-      setJoinError("加入失败，请稍后再试");
+      const msg = e instanceof Error ? e.message : String(e);
+      setJoinError(msg === "timeout" ? "连接超时，请更换网络或浏览器再试" : msg === "failed" ? "连接失败，请检查网络限制（尝试4G/家宽）" : "加入失败，请稍后再试");
       setShowJoin(true);
     } finally {
       setConnecting(false);

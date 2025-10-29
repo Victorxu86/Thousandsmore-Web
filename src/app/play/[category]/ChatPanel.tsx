@@ -12,11 +12,13 @@ type Props = {
     shadowAccent: string;
   };
   currentQuestionId: string | null;
+  categoryId: string;
+  onRoomToken?: (token: string | null) => void;
 };
 
 type ChatMsg = { id: string; sender: string; text: string; ts: number };
 
-export default function ChatPanel({ theme, currentQuestionId }: Props) {
+export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoomToken }: Props) {
   const [connected, setConnected] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [code, setCode] = useState("");
@@ -32,6 +34,9 @@ export default function ChatPanel({ theme, currentQuestionId }: Props) {
   const [showJoin, setShowJoin] = useState(false);
   const [waitingStatus, setWaitingStatus] = useState<"idle"|"waiting"|"joined">("idle");
   const [joinError, setJoinError] = useState<string>("");
+  const [inviteUntil, setInviteUntil] = useState<number>(0);
+  const [nowMs, setNowMs] = useState<number>(Date.now());
+  const [roomToken, setRoomToken] = useState<string | null>(null);
 
   const clientRef = useRef<Awaited<ReturnType<typeof connectChat>> | null>(null);
   const me = useMemo(() => `u_${Math.random().toString(36).slice(2, 8)}`, []);
@@ -41,6 +46,12 @@ export default function ChatPanel({ theme, currentQuestionId }: Props) {
     setMessages([]);
     setQuotaUsed(0);
   }, [currentQuestionId]);
+
+  // 倒计时刷新
+  useEffect(() => {
+    const t = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   // 直达链接自动加入（?code=XXXX）
   useEffect(() => {
@@ -66,6 +77,7 @@ export default function ChatPanel({ theme, currentQuestionId }: Props) {
     } catch { setDirectLink(""); }
     setShowInvite(true);
     setWaitingStatus("waiting");
+    setInviteUntil(Date.now() + 30*60*1000);
     // 邀请方立即连接并监听对方加入
     setConnecting(true);
     try {
@@ -92,6 +104,16 @@ export default function ChatPanel({ theme, currentQuestionId }: Props) {
         setPeerTyping(!!data.typing);
         if (data.typing) setTimeout(() => setPeerTyping(false), 3000);
       });
+      // 请求房间令牌（按房主解锁状态）并广播给对方
+      try {
+        const res = await fetch(`/api/chat/room-token`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code: c, category: categoryId }) });
+        const data = await res.json();
+        if (res.ok && data.token) {
+          setRoomToken(data.token);
+          onRoomToken && onRoomToken(data.token);
+          await client.channel.publish("room_token", { token: data.token });
+        }
+      } catch {}
     } catch (e) {
       console.error(e);
     } finally {
@@ -131,6 +153,14 @@ export default function ChatPanel({ theme, currentQuestionId }: Props) {
         setPeerTyping(!!data.typing);
         if (data.typing) {
           setTimeout(() => setPeerTyping(false), 3000);
+        }
+      });
+      // 接收房间令牌（由房主下发）
+      await client.channel.subscribe("room_token", (m) => {
+        const data = m.data as { token?: string };
+        if (data?.token) {
+          setRoomToken(data.token);
+          onRoomToken && onRoomToken(data.token);
         }
       });
       setConnected(true);
@@ -173,26 +203,24 @@ export default function ChatPanel({ theme, currentQuestionId }: Props) {
         <button onClick={handleInvite} className={`px-3 py-2 rounded-full border text-sm ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent}`}>邀请朋友</button>
         <button onClick={()=>{ setJoinError(""); setShowJoin(true); }} disabled={connecting || connected} className={`px-3 py-2 rounded-full border text-sm ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent}`}>{connected?"已加入":"加入对话"}</button>
         {connected && (
-          <button
-            onClick={async ()=>{
-              const client = clientRef.current;
-              if (client) { try { await client.disconnect(); } catch {} }
-              clientRef.current = null;
-              setConnected(false);
-              setMessages([]);
-              setQuotaUsed(0);
-              setInviteCode("");
-              setDirectLink("");
-              setCode("");
-              setShowInvite(false);
-              setShowJoin(false);
-              setTyping(false);
-              setPeerTyping(false);
-              setWaitingStatus("idle");
-              setJoinError("");
-            }}
-            className={`px-3 py-2 rounded-full border text-sm ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent}`}
-          >退出并清空</button>
+          <button onClick={async ()=>{
+            const client = clientRef.current;
+            if (client) { try { await client.disconnect(); } catch {} }
+            clientRef.current = null;
+            setConnected(false);
+            setMessages([]);
+            setQuotaUsed(0);
+            setInviteCode("");
+            setDirectLink("");
+            setCode("");
+            setShowInvite(false);
+            setShowJoin(false);
+            setTyping(false);
+            setPeerTyping(false);
+            setWaitingStatus("idle");
+            setRoomToken(null);
+            onRoomToken && onRoomToken(null);
+          }} className={`px-3 py-2 rounded-full border text-sm ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent}`}>退出并清空</button>
         )}
       </div>
 
@@ -231,10 +259,10 @@ export default function ChatPanel({ theme, currentQuestionId }: Props) {
         </div>
       )}
 
-      {/* 邀请弹窗（参考激情页样式） */}
+      {/* 邀请弹窗（参考激情页样式），点击外部关闭但保留底部固定条 */}
       {showInvite && (
         <div className="fixed inset-0 z-40 flex items-center justify-center">
-          <div className="fixed inset-0 bg-black/60 backdrop-blur-md" />
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-md" onClick={()=>setShowInvite(false)} />
           <div className={`relative z-10 w-[92%] max-w-md rounded-xl border ${theme.borderAccent} bg-black/85 text-white p-5 ${theme.shadowAccent}`}>
             <h2 className="text-lg font-semibold mb-2">邀请朋友加入</h2>
             <div className="text-sm opacity-80 mb-3">将房间码或直达链接发给对方，进入页面后输入即可加入。</div>
@@ -256,6 +284,17 @@ export default function ChatPanel({ theme, currentQuestionId }: Props) {
             </div>
             <div className="mt-2 text-xs opacity-70 leading-5">提示：每题每人最多可发送 5 条消息。邀请码/链接有效期 30 分钟。</div>
           </div>
+        </div>
+      )}
+
+      {/* 底部固定邀请条（30 分钟显示） */}
+      {inviteCode && inviteUntil > nowMs && !showInvite && (
+        <div className={`fixed bottom-4 left-1/2 -translate-x-1/2 z-30 w-[92%] max-w-md rounded-full border ${theme.borderAccent} bg-black/80 text-white px-3 py-2 flex items-center gap-2 ${theme.shadowAccent}`}>
+          <span className="text-xs opacity-80">房间码</span>
+          <span className="font-mono tracking-wider">{inviteCode}</span>
+          <button onClick={()=>{ try { navigator.clipboard.writeText(inviteCode); } catch {} }} className={`ml-1 px-2 py-1 rounded-full border text-xs ${theme.borderAccent} ${theme.hoverAccentBg}`}>复制</button>
+          <div className="flex-1" />
+          <span className="text-xs opacity-70">{Math.max(0, Math.ceil((inviteUntil - nowMs)/60000))}m</span>
         </div>
       )}
     </div>

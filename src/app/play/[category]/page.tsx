@@ -26,6 +26,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
   const [hydrated, setHydrated] = useState(false);
   const [promptReady, setPromptReady] = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState<boolean>(false);
+  const [roomToken, setRoomToken] = useState<string | null>(null);
   const lang = useLang();
 
   const theme = useMemo(() => {
@@ -106,6 +107,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
     async function fetchItems() {
       if (!category) return;
       const q = new URLSearchParams({ category: category.id, lang });
+      if (roomToken) q.set("roomToken", roomToken);
       if (activeTopics.size > 0) q.set("topics", Array.from(activeTopics).join(","));
       const res = await fetch(`/api/prompts?${q.toString()}`);
       const data = await res.json();
@@ -114,7 +116,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
       setRemoteItems(items as Array<{ id: string; type: PromptType; text: string; topic?: string | null }>);
     }
     fetchItems();
-  }, [category, activeTopics, lang]);
+  }, [category, activeTopics, lang, roomToken]);
 
   useEffect(() => {
     async function fetchTopics() {
@@ -346,7 +348,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
         </div>
 
         {/* 底部聊天面板（紫黑主题随分类） */}
-        <ChatPanel theme={theme} currentQuestionId={currentPrompt?.id || null} />
+        <ChatPanel theme={theme} currentQuestionId={currentPrompt?.id || null} categoryId={category.id} onRoomToken={(t)=>setRoomToken(t)} />
       </div>
     </div>
   );

@@ -22,7 +22,11 @@ export async function GET(req: NextRequest) {
     const params: { start?: string; end?: string; direction?: 'forwards' | 'backwards'; limit?: number } = {};
     if (sinceMs > 0) params.start = new Date(sinceMs).toISOString();
     params.direction = 'forwards';
-    const page = await ch.history(params as any);
+    const page = await (
+      ch as unknown as {
+        history: (params?: { start?: string; end?: string; direction?: 'forwards' | 'backwards'; limit?: number }) => Promise<{ items: Array<{ name?: string; data?: unknown; timestamp?: number }> }>;
+      }
+    ).history(params);
     const items = (page.items || []).map((m) => ({ name: m.name, data: m.data, ts: m.timestamp }));
     return NextResponse.json({ items });
   } catch (e: unknown) {

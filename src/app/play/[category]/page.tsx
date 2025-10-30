@@ -465,14 +465,23 @@ export default function PlayCategoryPage({ params }: PageProps) {
                   if (promptId && r.prompt_id && r.prompt_id !== promptId) return;
                   setItems((prev) => [...prev, { id: Math.random().toString(36), user_id: r.user_id, nickname: r.nickname || undefined, text: r.text, created_at: r.created_at }]);
                 })
-                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_rooms', filter: `id=eq.${room}` }, (payload: RealtimePostgresChangesPayload<{ current_prompt_id?: string|null }>) => {
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_rooms', filter: `id=eq.${room}` }, async (payload: RealtimePostgresChangesPayload<{ current_prompt_id?: string|null }>) => {
                   const pid = (payload.new as { current_prompt_id?: string|null } | null)?.current_prompt_id ?? null;
                   if (!pid) return;
                   const collection: Array<{ id: string; type: PromptType; text: string }> =
                     (remoteItems.length ? remoteItems.map(({id,type,text})=>({id,type,text})) : prompts.map(({id,type,text})=>({id,type,text})));
-                  const match = collection.find(x=>x.id===pid);
-                  if (match) {
-                    const p: Prompt = { id: match.id, text: match.text, type: match.type };
+                  let hit = collection.find(x=>x.id===pid);
+                  if (!hit) {
+                    try {
+                      const r = await fetch(`/api/prompts/one?id=${encodeURIComponent(pid)}&lang=${lang}`);
+                      const pj = await r.json();
+                      if (r.ok && pj?.id) {
+                        hit = { id: pj.id, text: pj.text, type: pj.type };
+                      }
+                    } catch {}
+                  }
+                  if (hit) {
+                    const p: Prompt = { id: hit.id, text: hit.text, type: hit.type };
                     setCurrentPrompt(p);
                     setSeenPromptIds(new Set([p.id]));
                   }
@@ -554,7 +563,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
               <div className="fixed inset-x-0 bottom-4 flex justify-center pointer-events-none">
                 <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl border border-purple-500/60 bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(168,85,247,.25)] p-3">
                   {needNick && (
-                    <div className="fixed inset-0 z-50 flex items-center justify-center">
+                    <div className="fixed inset-x-0 z-50 bottom-28 flex items-center justify-center">
                       <div className="w-[92%] max-w-sm rounded-xl border border-purple-500/60 bg-black/90 text-white p-5 shadow-[0_10px_40px_rgba(168,85,247,.35)]">
                         <h2 className="text-lg font-semibold mb-2">{lang==='en'?'Set your nickname':'请输入昵称'}</h2>
                         <p className="text-sm opacity-80 mb-3">{lang==='en'?'This will be shown to your partner in this room only.':'只用于当前房间展示，不会被保存。'}</p>
@@ -581,7 +590,6 @@ export default function PlayCategoryPage({ params }: PageProps) {
                     )}
                   </div>
                   <div className="mt-3 flex items-center gap-2">
-                    <input value={nick} onChange={(e)=> setNick(e.target.value)} placeholder={lang==='en'?'Nickname':'昵称'} className="w-36 px-2 py-1 rounded border border-purple-500/50 bg-black/50 text-sm text-white placeholder:text-white/40" />
                     <input value={input} onChange={(e)=>setInput(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') send(); }} placeholder={lang==='en'?'Type a message':'输入消息'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-sm text-white placeholder:text-white/40" />
                     <button onClick={send} disabled={!nick.trim()} className="px-3 py-2 rounded bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50">{lang==='en'?'Send':'发送'}</button>
                   </div>

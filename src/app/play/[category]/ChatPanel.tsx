@@ -40,6 +40,9 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
   const [debug, setDebug] = useState<boolean>(false);
   const [connState, setConnState] = useState<string>("idle");
   const [membersCount, setMembersCount] = useState<number>(0);
+  const [fallbackPolling, setFallbackPolling] = useState<boolean>(false);
+  const lastTsRef = useRef<number>(0);
+  const pollTimerRef = useRef<any>(null);
 
   const clientRef = useRef<Awaited<ReturnType<typeof connectChat>> | null>(null);
   const me = useMemo(() => `u_${Math.random().toString(36).slice(2, 8)}`, []);
@@ -211,16 +214,45 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
       const msg = e instanceof Error ? e.message : String(e);
       setJoinError(msg === "timeout" ? "连接超时，请更换网络或浏览器再试" : msg === "failed" ? "连接失败，请检查网络限制（尝试4G/家宽）" : "加入失败，请稍后再试");
       setShowJoin(true);
+      // 启用轮询后备方案
+      setFallbackPolling(true);
+      try { if (!silent) setShowJoin(false); } catch {}
+      startPolling(joinCode);
     } finally {
       setConnecting(false);
     }
+  }
+
+  function startPolling(codeVal: string) {
+    clearInterval(pollTimerRef.current);
+    pollTimerRef.current = setInterval(async () => {
+      try {
+        const res = await fetch(`/api/chat/poll?code=${encodeURIComponent(codeVal)}&since=${lastTsRef.current}`);
+        const data = await res.json();
+        if (Array.isArray(data.items)) {
+          const newMsgs = data.items as Array<{ name: string; data: any; ts: number }>;
+          for (const m of newMsgs) {
+            lastTsRef.current = Math.max(lastTsRef.current, m.ts || 0);
+            if (m.name === "msg") {
+              const d = m.data as { id: string; sender: string; text: string; ts: number; q?: string };
+              if (currentQuestionId && d.q && d.q !== currentQuestionId) continue;
+              setMessages((prev) => [...prev, { id: d.id, sender: d.sender, text: d.text, ts: d.ts }]);
+            }
+          }
+        }
+      } catch {}
+    }, 1500);
   }
 
   async function send() {
     const client = clientRef.current;
     if (!client || !input.trim() || quotaUsed >= quotaMax) return;
     const msg: ChatMsg = { id: `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, sender: me, text: input.trim(), ts: Date.now() };
-    await client.channel.publish("msg", { ...msg, q: currentQuestionId || null });
+    if (!fallbackPolling) {
+      await client.channel.publish("msg", { ...msg, q: currentQuestionId || null });
+    } else {
+      await fetch(`/api/chat/send`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code, name: 'msg', data: { ...msg, q: currentQuestionId || null } }) });
+    }
     setMessages((prev) => [...prev, msg]);
     setInput("");
     setQuotaUsed((n) => n + 1);

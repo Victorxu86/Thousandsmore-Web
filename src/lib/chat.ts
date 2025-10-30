@@ -28,13 +28,12 @@ export async function connectChat(code: string): Promise<ChatClient> {
     return client;
   }
 
-  // 尝试 1：常规（含 websocket/xhr_streaming/xhr_polling），超时 8s
+  // 优先使用 xhr_polling（兼容性最高），失败再回退到综合方案
   let ably: Ably.Realtime;
   try {
-    ably = await connectWith({ authUrl, transports: ["web_socket", "xhr_streaming", "xhr_polling"], tls: true }, 8000);
+    ably = await connectWith({ authUrl, transports: ["xhr_polling"], tls: true }, 8000);
   } catch (e1) {
-    // 尝试 2：仅 xhr_polling，超时 12s（适配极端受限网络）
-    ably = await connectWith({ authUrl, transports: ["xhr_polling"], tls: true }, 12000);
+    ably = await connectWith({ authUrl, transports: ["web_socket", "xhr_streaming", "xhr_polling"], tls: true }, 12000);
   }
 
   // 取回频道名

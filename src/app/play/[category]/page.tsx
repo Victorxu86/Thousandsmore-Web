@@ -460,7 +460,9 @@ export default function PlayCategoryPage({ params }: PageProps) {
                 .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_rooms', filter: `id=eq.${room}` }, (payload: RealtimePostgresChangesPayload<{ current_prompt_id: string|null }>) => {
                   const pid = payload.new?.current_prompt_id;
                   if (!pid) return;
-                  const match = (remoteItems.length?remoteItems:prompts).find(x=>x.id===pid) as any;
+                  const collection: Array<{ id: string; type: PromptType; text: string }> =
+                    (remoteItems.length ? remoteItems.map(({id,type,text})=>({id,type,text})) : prompts.map(({id,type,text})=>({id,type,text})));
+                  const match = collection.find(x=>x.id===pid);
                   if (match) {
                     const p: Prompt = { id: match.id, text: match.text, type: match.type };
                     setCurrentPrompt(p);
@@ -469,7 +471,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
                 })
                 .subscribe();
               return () => { try { supa.removeChannel(channel); } catch {} };
-            }, [room, promptId]);
+            }, [promptId]);
             async function send() {
               if (!room || !myId || !input.trim()) return;
               const payload = { room_id: room, user_id: myId, nickname: nick || null, prompt_id: promptId, text: input.trim() };
@@ -493,7 +495,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
                 if (Array.isArray(data.items)) setItems(data.items);
               }, 4000);
               return () => clearInterval(t);
-            }, [room, promptId]);
+            }, [promptId]);
             // 输入时 ping，防止超时结束
             useEffect(() => {
               if (!room) return;
@@ -502,7 +504,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
                 fetch('/api/chat/room/ping', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room_id: room }) });
               }, 800);
               return () => clearTimeout(t);
-            }, [room, input]);
+            }, [input]);
             return (
               <div className="fixed inset-x-0 bottom-4 flex justify-center pointer-events-none">
                 <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl border border-purple-500/60 bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(168,85,247,.25)] p-3">

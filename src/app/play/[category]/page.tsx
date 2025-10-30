@@ -308,14 +308,6 @@ export default function PlayCategoryPage({ params }: PageProps) {
           <button onClick={createRoom} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'Invite Friends':'邀请朋友'}</button>
           <button onClick={copyLink} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'Copy Link':'复制链接'}</button>
           <button onClick={endRoom} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'End':'结束房间'}</button>
-          {/* 聊天 UI 放置在右上角按钮组之后 */}
-          {(() => {
-            function ChatAnchor() {
-              return room ? <ChatBox /> : null;
-            }
-            // ChatBox 在下方定义
-            return <ChatAnchor />;
-          })()}
         </div>
       </div>
 
@@ -439,7 +431,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
             </div>
           </div>
         )}
-        {/* 聊天组件定义（渲染位置见右上角按钮组后） */}
+        {/* 底部聊天面板：黑+紫主题，固定中下区域 */}
         {(() => {
           // 简化：使用内联组件以减少文件改动
           function ChatBox() {
@@ -596,47 +588,48 @@ export default function PlayCategoryPage({ params }: PageProps) {
               return () => clearInterval(t);
             }, [room, remoteItems, currentPrompt?.id, prompts]);
             return (
-              <div className="ml-2 inline-block align-top pointer-events-auto">
-                {/* 昵称弹窗：居中+模糊，与激情页一致 */}
-                {needNick && (
-                  <>
-                    <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md" />
-                    <div className="fixed inset-0 z-50 flex items-center justify-center">
-                      <div className="w-[92%] max-w-sm rounded-xl border border-purple-500/60 bg-black/90 text-white p-5 shadow-[0_10px_40px_rgba(168,85,247,.35)]">
-                        <h2 className="text-lg font-semibold mb-2">{lang==='en'?'Set your nickname':'请输入昵称'}</h2>
-                        <p className="text-sm opacity-80 mb-1">{lang==='en'?'This will be shown to your partner in this room only.':'只用于当前房间展示，不会被保存。'}</p>
-                        <p className="text-sm opacity-80 mb-3">{lang==='en'?'Note: Max 5 messages per person per question.':'注：每道问题每人仅限发送五句消息。'}</p>
-                        <div className="flex items-center gap-2">
-                          <input autoFocus value={nick} onChange={(e)=>setNick(e.target.value)} placeholder={lang==='en'?'Nickname':'昵称'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-sm text-white placeholder:text-white/40" />
-                          <button onClick={()=>{ if(nick.trim()){ setNeedNick(false); try { sessionStorage.setItem(`chat_nick_set_${room}`,'1'); sessionStorage.setItem(`chat_nick_${room}`, nick.trim()); } catch {} } }} className="px-3 py-2 rounded bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50" disabled={!nick.trim()}>{lang==='en'?'Confirm':'确定'}</button>
+              <div className="fixed inset-x-0 bottom-4 flex justify-center pointer-events-none">
+                <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(168,85,247,.25)] p-3">
+                  {needNick && (
+                    <>
+                      <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md" />
+                      <div className="fixed inset-0 z-50 flex items-center justify-center">
+                        <div className="w-[92%] max-w-sm rounded-xl border border-purple-500/60 bg-black/90 text-white p-5 shadow-[0_10px_40px_rgba(168,85,247,.35)]">
+                          <h2 className="text-lg font-semibold mb-2">{lang==='en'?'Set your nickname':'请输入昵称'}</h2>
+                          <p className="text-sm opacity-80 mb-1">{lang==='en'?'This will be shown to your partner in this room only.':'只用于当前房间展示，不会被保存。'}</p>
+                          <p className="text-sm opacity-80 mb-3">{lang==='en'?'Note: Max 5 messages per person per question.':'注：每道问题每人仅限发送五句消息。'}</p>
+                          <div className="flex items-center gap-2">
+                            <input autoFocus value={nick} onChange={(e)=>setNick(e.target.value)} placeholder={lang==='en'?'Nickname':'昵称'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-sm text-white placeholder:text-white/40" />
+                            <button onClick={()=>{ if(nick.trim()){ setNeedNick(false); try { sessionStorage.setItem(`chat_nick_set_${room}`,'1'); sessionStorage.setItem(`chat_nick_${room}`, nick.trim()); } catch {} } }} className="px-3 py-2 rounded bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50" disabled={!nick.trim()}>{lang==='en'?'Confirm':'确定'}</button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  </>
-                )}
-                {/* 顶部条简化，移除边框，仅标题 */}
-                <div className="text-xs text-purple-200/80 mb-2">
-                  <span>{lang === 'en' ? 'Chat' : '聊天'} {room ? `#${room}` : ''}</span>
-                </div>
-                <div className="max-h-48 w-[360px] overflow-auto space-y-2 pr-1 bg-black/50 rounded-lg p-3 shadow-[0_8px_24px_rgba(168,85,247,.18)]">
+                    </>
+                  )}
+                  <div className="text-xs text-purple-200/80 mb-2 flex items-center justify-between">
+                    <span>{lang === 'en' ? 'Chat' : '聊天'} {room ? `#${room}` : ''}</span>
+                    {!room && <span className="opacity-70">{lang === 'en' ? 'Create a chat to start' : '创建房间后开始聊天'}</span>}
+                  </div>
+                  <div className="max-h-48 overflow-auto space-y-2 pr-1">
                     {items.map((m, i) => (
                       <div key={m.id + i} className={`text-sm ${m.user_id === myId ? 'text-purple-200' : 'text-white/90'}`}>
-                        <span className="opacity-70 mr-1">{m.nickname || (m.user_id === myId ? (lang==='en'?'Me':'我') : (lang==='en'?'Guest':'访客'))}：</span>
-                        <span className="break-words">{m.text}</span>
+                        <span className="opacity-70 mr-1">{m.nickname || (m.user_id === myId ? (lang==='en'?'Me':'我') : 'Guest')}：</span>
+                        <span>{m.text}</span>
                       </div>
                     ))}
                     {loaded && items.length === 0 && (
                       <div className="text-sm opacity-70">{lang==='en'?'No messages yet':'还没有消息'}</div>
                     )}
                   </div>
-                <div className="mt-2 flex items-center gap-2">
-                  <input value={input} onChange={(e)=>setInput(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') send(); }} placeholder={lang==='en'?'Type a message':'输入消息'} className="flex-1 px-3 py-2 rounded bg-black/60 text-sm text-white placeholder:text-white/40" />
-                  <button onClick={send} disabled={!nick.trim() || !currentPrompt?.id} className="px-3 py-2 rounded bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50">{lang==='en'?'Send':'发送'}</button>
+                  <div className="mt-3 flex items-center gap-2">
+                    <input value={input} onChange={(e)=>setInput(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') send(); }} placeholder={lang==='en'?'Type a message':'输入消息'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-sm text-white placeholder:text-white/40" />
+                    <button onClick={send} disabled={!nick.trim() || !currentPrompt?.id} className="px-3 py-2 rounded bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50">{lang==='en'?'Send':'发送'}</button>
+                  </div>
                 </div>
               </div>
             );
           }
-          return null; // 实际渲染在右上角按钮组后
+          return room ? <ChatBox /> : null;
         })()}
       </div>
     </div>

@@ -137,6 +137,8 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
   }
 
   function startPolling(codeVal: string) {
+    // 从当前时间开始拉取，避免拿到历史消息，确保后续新消息/加入信号能被捕获
+    lastTsRef.current = Date.now();
     if (pollTimerRef.current !== null) {
       clearInterval(pollTimerRef.current);
     }

@@ -42,7 +42,7 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
   const [membersCount, setMembersCount] = useState<number>(0);
   const [fallbackPolling, setFallbackPolling] = useState<boolean>(false);
   const lastTsRef = useRef<number>(0);
-  const pollTimerRef = useRef<any>(null);
+  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const clientRef = useRef<Awaited<ReturnType<typeof connectChat>> | null>(null);
   const me = useMemo(() => `u_${Math.random().toString(36).slice(2, 8)}`, []);
@@ -230,7 +230,7 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
         const res = await fetch(`/api/chat/poll?code=${encodeURIComponent(codeVal)}&since=${lastTsRef.current}`);
         const data = await res.json();
         if (Array.isArray(data.items)) {
-          const newMsgs = data.items as Array<{ name: string; data: any; ts: number }>;
+          const newMsgs = data.items as Array<{ name: string; data: { id: string; sender: string; text: string; ts: number; q?: string }; ts: number }>;
           for (const m of newMsgs) {
             lastTsRef.current = Math.max(lastTsRef.current, m.ts || 0);
             if (m.name === "msg") {

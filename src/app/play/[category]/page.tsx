@@ -28,6 +28,11 @@ export default function PlayCategoryPage({ params }: PageProps) {
   const [promptReady, setPromptReady] = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState<boolean>(false);
   const [room, setRoom] = useState<string | null>(null);
+  const [toast, setToast] = useState<string | null>(null);
+  function showToast(msg: string) {
+    setToast(msg);
+    window.setTimeout(() => setToast(null), 1800);
+  }
   const lang = useLang();
 
   const theme = useMemo(() => {
@@ -76,20 +81,20 @@ export default function PlayCategoryPage({ params }: PageProps) {
     if (!category) return;
     const res = await fetch(`/api/chat/room`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ category_id: category.id }) });
     const data = await res.json();
-    if (!res.ok) { alert(data.error || '创建失败'); return; }
+    if (!res.ok) { showToast(data.error || '创建失败'); return; }
     const url = new URL(window.location.href);
     url.searchParams.set('room', data.id);
     window.history.replaceState(null, '', url.toString());
     setRoom(data.id);
-    try { await navigator.clipboard.writeText(url.toString()); alert(lang==='en'?'Room created & link copied':'已创建并复制邀请链接'); } catch { alert(lang==='en'?'Room created':'已创建'); }
+    try { await navigator.clipboard.writeText(url.toString()); showToast(lang==='en'?'Room created & link copied':'已创建并复制邀请链接'); } catch { showToast(lang==='en'?'Room created':'已创建'); }
   }
   async function endRoom() {
     const room = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('room') : null;
     if (!room) return;
     const res = await fetch(`/api/chat/room`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room_id: room }) });
     const data = await res.json();
-    if (!res.ok) { alert(data.error || '结束失败'); return; }
-    alert(lang==='en'?'Room ended':'房间已结束');
+    if (!res.ok) { showToast(data.error || '结束失败'); return; }
+    showToast(lang==='en'?'Room ended':'房间已结束');
     // 清理 URL 与本地状态
     const url = new URL(window.location.href);
     url.searchParams.delete('room');
@@ -99,9 +104,9 @@ export default function PlayCategoryPage({ params }: PageProps) {
   function copyLink() {
     const url = new URL(window.location.href);
     const hasRoom = !!url.searchParams.get('room');
-    if (!hasRoom) { alert(lang==='en'?'No room yet. Create first.':'尚未创建房间'); return; }
+    if (!hasRoom) { showToast(lang==='en'?'No room yet. Create first.':'尚未创建房间'); return; }
     navigator.clipboard.writeText(url.toString());
-    alert(lang==='en'?'Link copied':'已复制链接');
+    showToast(lang==='en'?'Link copied':'已复制链接');
   }
 
   // 首次渲染完成标记，避免 SSR/CSR 切换闪烁
@@ -389,6 +394,14 @@ export default function PlayCategoryPage({ params }: PageProps) {
             {lang === "en" ? "Next" : "下一个"}
           </button>
         </div>
+        {/* Toast */}
+        {toast && (
+          <div className="fixed inset-x-0 bottom-20 flex justify-center pointer-events-none">
+            <div className="pointer-events-auto rounded-full border border-purple-500/60 bg-black/85 text-white text-sm px-4 py-2 shadow-[0_6px_20px_rgba(168,85,247,.25)]">
+              {toast}
+            </div>
+          </div>
+        )}
         {/* 底部聊天面板：黑+紫主题，固定中下区域 */}
         {(() => {
           // 简化：使用内联组件以减少文件改动
@@ -435,12 +448,24 @@ export default function PlayCategoryPage({ params }: PageProps) {
               const res = await fetch(`/api/chat/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
               const data = await res.json();
               if (!res.ok) {
-                alert(data.error || '发送失败');
+                showToast(data.error || '发送失败');
                 return;
               }
               setItems((prev) => [...prev, { id: Math.random().toString(36), user_id: myId, nickname: nick || undefined, text: input.trim(), created_at: new Date().toISOString() }]);
               setInput("");
             }
+            // 轮询兜底（Realtime 未生效时也能看到对方）
+            useEffect(() => {
+              if (!room) return;
+              const t = setInterval(async () => {
+                const qs = new URLSearchParams({ room, limit: "50" });
+                if (promptId) qs.set("prompt", String(promptId));
+                const res = await fetch(`/api/chat/messages?${qs.toString()}`);
+                const data = await res.json();
+                if (Array.isArray(data.items)) setItems(data.items);
+              }, 4000);
+              return () => clearInterval(t);
+            }, [room, promptId]);
             // 输入时 ping，防止超时结束
             useEffect(() => {
               if (!room) return;

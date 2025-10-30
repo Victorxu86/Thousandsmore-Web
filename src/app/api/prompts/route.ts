@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabaseServer";
+import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { ENTITLEMENT_COOKIE, verifyEntitlement } from "@/lib/token";
 import { categories, getCategoryById } from "@/data";
 import { FREE_LIMIT_PER_CATEGORY } from "@/data/config";
@@ -38,7 +39,7 @@ export async function GET(req: NextRequest) {
 
   // 房间继承：若提供 roomId，则按房主权益解锁（scope: all 或匹配分类）
   if (!isPro && roomId) {
-    const supabaseAdmin = await getSupabaseServer();
+    const supabaseAdmin = getSupabaseAdmin();
     const { data: roomData } = await supabaseAdmin.from("chat_rooms").select("owner_email").eq("id", roomId).limit(1);
     const ownerEmail = roomData && roomData[0]?.owner_email;
     if (ownerEmail) {

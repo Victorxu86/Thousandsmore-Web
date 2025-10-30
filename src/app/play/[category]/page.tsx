@@ -280,9 +280,11 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
         </div>
         <div className="max-h-48 overflow-auto space-y-2 pr-1">
           {items.map((m, i) => (
-            <div key={m.id + i} className={`text-sm ${m.user_id === myId ? 'text-purple-200' : 'text-white/90'}`}>
-              <span className="opacity-70 mr-2">{m.nickname || (m.user_id === myId ? (lang==='en'?'Me':'我') : 'Guest')}：</span>
-              <span>{m.text}</span>
+            <div key={m.id + i} className={`flex ${m.user_id === myId ? 'justify-end' : 'justify-start'}`}>
+              <div className={`text-sm ${m.user_id === myId ? 'text-purple-200' : 'text-white/90'} max-w-[85%]`}>
+                <span className="opacity-70 mr-2">{m.nickname || (m.user_id === myId ? (lang==='en'?'Me':'我') : 'Guest')}：</span>
+                <span>{m.text}</span>
+              </div>
             </div>
           ))}
           {loaded && items.length === 0 && (

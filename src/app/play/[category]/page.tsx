@@ -496,7 +496,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
       const items = Array.isArray(data.items) ? data.items : [];
       setRemoteItems(items as Array<{ id: string; type: PromptType; text: string; topic?: string | null }>);
       // 切题视为活跃：ping 房间，防止10分钟自动结束
-      if (room) {
+      if (room && category.id === 'dating') {
         fetch('/api/chat/room/ping', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room_id: room }) });
         // 若房间存在，拉取当前房间选中题目；若为空则以首题作为默认并写回房间
         try {
@@ -653,11 +653,13 @@ export default function PlayCategoryPage({ params }: PageProps) {
             })()}
           </div>
         )}
-        <div className="ml-3 flex items-center gap-2">
-          <button onClick={createRoom} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'Invite Friends':'邀请朋友'}</button>
-          <button onClick={copyLink} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'Copy Link':'复制链接'}</button>
-          <button onClick={endRoom} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'End':'结束房间'}</button>
-        </div>
+        {category.id === 'dating' && (
+          <div className="ml-3 flex items-center gap-2">
+            <button onClick={createRoom} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'Invite Friends':'邀请朋友'}</button>
+            <button onClick={copyLink} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'Copy Link':'复制链接'}</button>
+            <button onClick={endRoom} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'End':'结束房间'}</button>
+          </div>
+        )}
       </div>
 
       <div className="w-full max-w-2xl text-center mt-10">
@@ -781,7 +783,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
           </div>
         )}
         {/* 创建房间确认弹窗（点击“邀请朋友”后出现） */}
-        {showCreateConfirm && (
+        {category.id === 'dating' && showCreateConfirm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={()=>setShowCreateConfirm(false)} />
             <div className="relative z-10 w-[92%] max-w-sm rounded-xl bg-black/90 text-white p-5 border border-purple-500/60 shadow-[0_10px_40px_rgba(168,85,247,.35)]">
@@ -796,8 +798,8 @@ export default function PlayCategoryPage({ params }: PageProps) {
           </div>
         )}
 
-        {/* 底部聊天面板：黑+紫主题，固定中下区域 */}
-        {room ? (
+        {/* 底部聊天面板：仅 Deeptalk(朋友) 开放 */}
+        {category.id === 'dating' && room ? (
           <ChatBox
             room={room}
             lang={lang}

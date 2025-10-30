@@ -308,6 +308,8 @@ export default function PlayCategoryPage({ params }: PageProps) {
           <button onClick={createRoom} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'Invite Friends':'邀请朋友'}</button>
           <button onClick={copyLink} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'Copy Link':'复制链接'}</button>
           <button onClick={endRoom} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'End':'结束房间'}</button>
+          {room && (<span className={`text-xs px-2 py-1 rounded-full ${theme.textAccent} border ${theme.borderAccent}`}>#{room}</span>)}
+          <span title={rtOk ? (lang==='en'?'Realtime OK':'Realtime 已启用') : (lang==='en'?'Realtime OFF':'Realtime 未启用')} className={`inline-block w-2 h-2 rounded-full ${rtOk ? 'bg-green-500' : 'bg-gray-500'} border border-white/20`} />
         </div>
       </div>
 
@@ -588,7 +590,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
               return () => clearInterval(t);
             }, [room, remoteItems, currentPrompt?.id, prompts]);
             return (
-              <div className="fixed inset-x-0 bottom-4 flex justify-center pointer-events-none">
+              <div className="fixed inset-x-0 bottom-8 flex justify-center pointer-events-none">
                 <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(168,85,247,.25)] p-3">
                   {needNick && (
                     <>

@@ -483,6 +483,12 @@ export default function PlayCategoryPage({ params }: PageProps) {
                 .subscribe();
               return () => { try { supa.removeChannel(channel); } catch {} };
             }, [promptId]);
+            // 房间变更时仅弹一次昵称（不随题目切换触发）
+            useEffect(() => {
+              if (!room) return;
+              setNick("");
+              setNeedNick(true);
+            }, [room]);
             async function send() {
               if (!room || !myId || !input.trim()) return;
               if (!nick.trim()) { showToast(lang==='en'? 'Please set a nickname' : '请先设置昵称'); return; }
@@ -507,7 +513,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
                 if (Array.isArray(data.items)) setItems(data.items);
               }, 4000);
               return () => clearInterval(t);
-            }, [promptId]);
+            }, [room, promptId]);
             // 输入时 ping，防止超时结束
             useEffect(() => {
               if (!room) return;

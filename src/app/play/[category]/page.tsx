@@ -443,7 +443,8 @@ export default function PlayCategoryPage({ params }: PageProps) {
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={()=>setShowCreateConfirm(false)} />
             <div className="relative z-10 w-[92%] max-w-sm rounded-xl bg-black/90 text-white p-5 border border-purple-500/60 shadow-[0_10px_40px_rgba(168,85,247,.35)]">
               <h3 className="text-lg font-semibold mb-2">{lang==='en'?'Start a chat room?':'是否创建聊天房间？'}</h3>
-              <p className="text-sm opacity-80 mb-4">{lang==='en'?'Share the link with friends to chat in Deeptalk.':'创建后复制链接邀请朋友在 Deeptalk 中对话。'}</p>
+              <p className="text-sm opacity-80">{lang==='en'?'Share the link with friends to chat in Deeptalk.':'创建后复制链接邀请朋友在 Deeptalk 中对话。'}</p>
+              <p className="text-sm opacity-80 mb-4">{lang==='en'?'Note: Max 5 messages per person per question.':'说明：每道题每人允许发送 5 条消息。'}</p>
               <div className="flex items-center justify-end gap-2">
                 <button onClick={()=>setShowCreateConfirm(false)} className="px-3 py-2 rounded-full text-sm border border-purple-500/60 hover:bg-white/10">{lang==='en'?'Cancel':'取消'}</button>
                 <button onClick={createRoomInternal} className="px-4 py-2 rounded-full text-sm bg-purple-600 text-white hover:brightness-110">{lang==='en'?'Create':'创建'}</button>
@@ -612,7 +613,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
               <div className="fixed inset-x-0 bottom-4 flex justify-center pointer-events-none">
                 <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(168,85,247,.25)] p-3">
                   {needNick && (
-                    <div className="fixed inset-x-0 z-50 bottom-40 md:bottom-48 flex items-center justify-center">
+                    <div className="fixed inset-x-0 z-50 bottom-80 flex items-center justify-center">
                       <div className="w-[92%] max-w-sm rounded-xl border border-purple-500/60 bg-black/90 text-white p-5 shadow-[0_10px_40px_rgba(168,85,247,.35)]">
                         <h2 className="text-lg font-semibold mb-2">{lang==='en'?'Set your nickname':'请输入昵称'}</h2>
                         <p className="text-sm opacity-80 mb-3">{lang==='en'?'This will be shown to your partner in this room only.':'只用于当前房间展示，不会被保存。'}</p>

@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
       const room = rooms && rooms[0];
       if (!room) return NextResponse.json({ error: "room not found" }, { status: 404 });
       const now = Date.now();
-      const lastActive = room.last_active_at ? new Date(room.last_active_at as any).getTime() : 0;
+      const lastActive = room.last_active_at ? Date.parse(String(room.last_active_at)) : 0;
       const ended = !!room.ended_at;
       const idleTooLong = lastActive && (now - lastActive > 10 * 60 * 1000);
       if (ended || idleTooLong) {
@@ -47,15 +47,14 @@ export async function POST(req: NextRequest) {
 
     // 每题每人最多 5 句、总 10 句限制
     if (promptId) {
-      const { data: userCountData, error: c1 } = await supabase
+      const { count: userCount, error: c1 } = await supabase
         .from("chat_messages")
         .select("id", { count: "exact", head: true })
         .eq("room_id", roomId)
         .eq("prompt_id", promptId)
         .eq("user_id", userId);
       if (c1) return NextResponse.json({ error: c1.message }, { status: 500 });
-      const userCount = userCountData?.length ? userCountData.length : (userCountData as any);
-      if ((userCount as number) >= 5) return NextResponse.json({ error: "per-user limit reached" }, { status: 429 });
+      if ((userCount ?? 0) >= 5) return NextResponse.json({ error: "per-user limit reached" }, { status: 429 });
 
       const { count: totalCount, error: c2 } = await supabase
         .from("chat_messages")

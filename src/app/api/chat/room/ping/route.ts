@@ -11,8 +11,8 @@ export async function POST(req: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     const room = data && data[0];
     if (!room) return NextResponse.json({ error: "room not found" }, { status: 404 });
-    const now = Date.now();
-    const lastActive = room.last_active_at ? new Date(room.last_active_at as any).getTime() : 0;
+  const now = Date.now();
+  const lastActive = room.last_active_at ? Date.parse(String(room.last_active_at)) : 0;
     const idleTooLong = lastActive && (now - lastActive > 10 * 60 * 1000);
     if (room.ended_at || idleTooLong) {
       if (!room.ended_at && idleTooLong) {

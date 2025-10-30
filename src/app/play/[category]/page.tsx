@@ -7,6 +7,7 @@ import { getRandomPrompt } from "@/data/prompts";
 import type { Prompt, PromptType } from "@/data/types";
 import { useLang } from "@/lib/lang";
 import { getSupabaseBrowser } from "@/lib/supabase";
+import type { RealtimePostgresInsertPayload } from "@supabase/supabase-js";
 
 type PageProps = {
   params: { category: string };
@@ -26,6 +27,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
   const [hydrated, setHydrated] = useState(false);
   const [promptReady, setPromptReady] = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState<boolean>(false);
+  const [room, setRoom] = useState<string | null>(null);
   const lang = useLang();
 
   const theme = useMemo(() => {
@@ -99,6 +101,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
   // 首次渲染完成标记，避免 SSR/CSR 切换闪烁
   useEffect(() => {
     setHydrated(true);
+    try { if (typeof window !== 'undefined') setRoom(new URLSearchParams(window.location.search).get('room')); } catch {}
   }, []);
 
   // 激情页一次性年龄确认（sessionStorage）
@@ -132,7 +135,6 @@ export default function PlayCategoryPage({ params }: PageProps) {
     async function fetchItems() {
       if (!category) return;
       const q = new URLSearchParams({ category: category.id, lang });
-      const room = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').get('room');
       if (room) q.set('room', room);
       if (activeTopics.size > 0) q.set("topics", Array.from(activeTopics).join(","));
       const res = await fetch(`/api/prompts?${q.toString()}`);
@@ -146,7 +148,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
       }
     }
     fetchItems();
-  }, [category, activeTopics, lang]);
+  }, [category, activeTopics, lang, room]);
 
   useEffect(() => {
     async function fetchTopics() {
@@ -383,8 +385,6 @@ export default function PlayCategoryPage({ params }: PageProps) {
         </div>
         {/* 底部聊天面板：黑+紫主题，固定中下区域 */}
         {(() => {
-          const room = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('room') : null;
-          const [messages, setMessages] = [undefined as unknown as Array<{ id: string; user_id: string; nickname?: string; text: string; created_at: string }>, undefined as unknown as any];
           // 简化：使用内联组件以减少文件改动
           function ChatBox() {
             const [loaded, setLoaded] = useState(false);
@@ -413,15 +413,16 @@ export default function PlayCategoryPage({ params }: PageProps) {
               })();
               // 实时订阅
               const supa = getSupabaseBrowser();
+              type ChatRow = { room_id: string; user_id: string; text: string; prompt_id?: string | null; nickname?: string | null; created_at: string };
               const channel = supa.channel(`room:${room}`)
-                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `room_id=eq.${room}` }, (payload: any) => {
-                  const r = payload.new as { room_id: string; user_id: string; text: string; prompt_id?: string; nickname?: string; created_at: string };
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `room_id=eq.${room}` }, (payload: RealtimePostgresInsertPayload<ChatRow>) => {
+                  const r = payload.new;
                   if (promptId && r.prompt_id && r.prompt_id !== promptId) return;
-                  setItems((prev) => [...prev, { id: Math.random().toString(36), user_id: r.user_id, nickname: r.nickname, text: r.text, created_at: r.created_at }]);
+                  setItems((prev) => [...prev, { id: Math.random().toString(36), user_id: r.user_id, nickname: r.nickname || undefined, text: r.text, created_at: r.created_at }]);
                 })
                 .subscribe();
               return () => { try { supa.removeChannel(channel); } catch {} };
-            }, [room, currentPrompt?.id]);
+            }, [room, promptId]);
             async function send() {
               if (!room || !myId || !input.trim()) return;
               const payload = { room_id: room, user_id: myId, nickname: nick || null, prompt_id: promptId, text: input.trim() };

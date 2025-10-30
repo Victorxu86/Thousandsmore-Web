@@ -40,7 +40,6 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
   const oneShotPollRef = useRef<number | null>(null);
   const promptId = currentPrompt?.id || null;
   const myCount = useMemo(() => items.filter((m) => m.user_id === myId).length, [items, myId]);
-  const isHost = useMemo(() => { try { return sessionStorage.getItem(`chat_created_by_me_${room}`) === '1'; } catch { return false; } }, [room]);
   const [copiedInModal, setCopiedInModal] = useState<null | boolean>(null);
 
   async function copyLinkInModal() {
@@ -198,9 +197,6 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
               <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
               <div className="relative z-10 w-[92%] max-w-sm rounded-xl bg-black/90 text-white p-5 border border-purple-500/60 shadow-[0_10px_40px_rgba(168,85,247,.35)]">
                 <h3 className="text-lg font-semibold mb-2">{lang==='en'?'Set your nickname':'请输入昵称'}</h3>
-                {isHost && (
-                  <div className="mb-2 text-xs text-purple-200/90">{lang==='en'?'Link copied. Share with your friend.':'链接已复制，分享给好友。'}</div>
-                )}
                 <p className="text-sm opacity-80 mb-3">{lang==='en'?'This will be shown to your partner in this room only.':'只用于当前房间展示，不会被保存。'}</p>
                 <div className="flex items-center gap-2">
                   <input autoFocus value={nick} onChange={(e)=>setNick(e.target.value)} placeholder={lang==='en'?'Nickname':'昵称'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-sm text-white placeholder:text-white/40" />
@@ -353,7 +349,6 @@ export default function PlayCategoryPage({ params }: PageProps) {
     setRoom(data.id);
     const copied = await copyTextToClipboard(url.toString());
     showToast(copied ? (lang==='en'?'Room created & link copied':'已创建并复制邀请链接') : (lang==='en'?'Room created':'已创建'));
-    try { sessionStorage.setItem(`chat_created_by_me_${data.id}`, '1'); } catch {}
     setShowCreateConfirm(false);
   }
   async function endRoom() {

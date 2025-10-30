@@ -38,7 +38,7 @@ export async function connectChat(code: string, forcedTransport?: "xhr_polling" 
     // auto：先 polling 再综合
     try {
       ably = await connectWith({ authUrl, transports: ["xhr_polling"], tls: true }, 8000);
-    } catch (e1) {
+  } catch {
       ably = await connectWith({ authUrl, transports: ["web_socket", "xhr_streaming", "xhr_polling"], tls: true }, 12000);
     }
   }

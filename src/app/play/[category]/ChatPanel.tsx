@@ -63,7 +63,8 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
       const auto = (usp.get("code") || "").toUpperCase();
       const ft = (usp.get("transport") || "").toLowerCase();
       const dbg = usp.get("debug") === "1";
-      if (ft === "xhr_polling" || ft === "web_socket") setForcedTransport(ft as any);
+      if (ft === "xhr_polling") setForcedTransport("xhr_polling");
+      else if (ft === "web_socket") setForcedTransport("web_socket");
       if (dbg) setDebug(true);
       if (auto && !connected && !connecting) {
         setCode(auto);

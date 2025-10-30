@@ -80,6 +80,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
     const url = new URL(window.location.href);
     url.searchParams.set('room', data.id);
     window.history.replaceState(null, '', url.toString());
+    setRoom(data.id);
     try { await navigator.clipboard.writeText(url.toString()); alert(lang==='en'?'Room created & link copied':'已创建并复制邀请链接'); } catch { alert(lang==='en'?'Room created':'已创建'); }
   }
   async function endRoom() {
@@ -89,6 +90,11 @@ export default function PlayCategoryPage({ params }: PageProps) {
     const data = await res.json();
     if (!res.ok) { alert(data.error || '结束失败'); return; }
     alert(lang==='en'?'Room ended':'房间已结束');
+    // 清理 URL 与本地状态
+    const url = new URL(window.location.href);
+    url.searchParams.delete('room');
+    window.history.replaceState(null, '', url.toString());
+    setRoom(null);
   }
   function copyLink() {
     const url = new URL(window.location.href);
@@ -265,7 +271,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
           </div>
         )}
         <div className="ml-3 flex items-center gap-2">
-          <button onClick={createRoom} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'Start Chat':'开始聊天'}</button>
+          <button onClick={createRoom} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'Invite Friends':'邀请朋友'}</button>
           <button onClick={copyLink} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'Copy Link':'复制链接'}</button>
           <button onClick={endRoom} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'End':'结束房间'}</button>
         </div>
@@ -471,7 +477,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
               </div>
             );
           }
-          return <ChatBox />;
+          return room ? <ChatBox /> : null;
         })()}
       </div>
     </div>

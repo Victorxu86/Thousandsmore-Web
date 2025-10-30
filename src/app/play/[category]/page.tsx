@@ -29,7 +29,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
   const [ageConfirmed, setAgeConfirmed] = useState<boolean>(false);
   const [room, setRoom] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
-  const [rtOk, setRtOk] = useState<boolean>(false);
+  const [showCreateConfirm, setShowCreateConfirm] = useState<boolean>(false);
   function showToast(msg: string) {
     setToast(msg);
     window.setTimeout(() => setToast(null), 1800);
@@ -78,7 +78,11 @@ export default function PlayCategoryPage({ params }: PageProps) {
     } as const;
   }, [category]);
   // 房间辅助：创建/结束/复制链接
-  async function createRoom() {
+  function createRoom() {
+    setShowCreateConfirm(true);
+  }
+
+  async function createRoomInternal() {
     if (!category) return;
     const res = await fetch(`/api/chat/room`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ category_id: category.id, lang }) });
     const data = await res.json();
@@ -88,6 +92,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
     window.history.replaceState(null, '', url.toString());
     setRoom(data.id);
     try { await navigator.clipboard.writeText(url.toString()); showToast(lang==='en'?'Room created & link copied':'已创建并复制邀请链接'); } catch { showToast(lang==='en'?'Room created':'已创建'); }
+    setShowCreateConfirm(false);
   }
   async function endRoom() {
     const room = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('room') : null;
@@ -309,10 +314,6 @@ export default function PlayCategoryPage({ params }: PageProps) {
           <button onClick={createRoom} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'Invite Friends':'邀请朋友'}</button>
           <button onClick={copyLink} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'Copy Link':'复制链接'}</button>
           <button onClick={endRoom} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'End':'结束房间'}</button>
-          {room && (
-            <span className={`text-xs px-2 py-1 rounded-full ${theme.textAccent} border ${theme.borderAccent}`}>#{room}</span>
-          )}
-          <span title={rtOk ? (lang==='en'?'Realtime OK':'Realtime 已启用') : (lang==='en'?'Realtime OFF':'Realtime 未启用')} className={`inline-block w-2 h-2 rounded-full ${rtOk ? 'bg-green-500' : 'bg-gray-500'} border border-white/20`} />
         </div>
       </div>
 
@@ -436,6 +437,21 @@ export default function PlayCategoryPage({ params }: PageProps) {
             </div>
           </div>
         )}
+        {/* 创建房间确认弹窗（点击“邀请朋友”后出现） */}
+        {showCreateConfirm && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={()=>setShowCreateConfirm(false)} />
+            <div className="relative z-10 w-[92%] max-w-sm rounded-xl bg-black/90 text-white p-5 border border-purple-500/60 shadow-[0_10px_40px_rgba(168,85,247,.35)]">
+              <h3 className="text-lg font-semibold mb-2">{lang==='en'?'Start a chat room?':'是否创建聊天房间？'}</h3>
+              <p className="text-sm opacity-80 mb-4">{lang==='en'?'Share the link with friends to chat in Deeptalk.':'创建后复制链接邀请朋友在 Deeptalk 中对话。'}</p>
+              <div className="flex items-center justify-end gap-2">
+                <button onClick={()=>setShowCreateConfirm(false)} className="px-3 py-2 rounded-full text-sm border border-purple-500/60 hover:bg-white/10">{lang==='en'?'Cancel':'取消'}</button>
+                <button onClick={createRoomInternal} className="px-4 py-2 rounded-full text-sm bg-purple-600 text-white hover:brightness-110">{lang==='en'?'Create':'创建'}</button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* 底部聊天面板：黑+紫主题，固定中下区域 */}
         {(() => {
           // 简化：使用内联组件以减少文件改动
@@ -460,11 +476,9 @@ export default function PlayCategoryPage({ params }: PageProps) {
             const [needNick, setNeedNick] = useState<boolean>(initialNeedNick);
             const [input, setInput] = useState("");
             const [realtimeReady, setRealtimeReady] = useState<boolean>(false);
+            const isTyping = input.trim().length > 0;
             const lastSentAtRef = useRef<number>(0);
-            const oneShotPollRef = useRef<number | null>(null);
             const promptId = currentPrompt?.id || null;
-            const promptIdRef = useRef<string | null>(promptId);
-            useEffect(() => { promptIdRef.current = currentPrompt?.id || null; }, [currentPrompt?.id]);
             useEffect(() => {
               if (!room) return;
               // 生成临时用户ID
@@ -487,8 +501,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
               const channel = supa.channel(`room:${room}`)
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `room_id=eq.${room}` }, (payload: RealtimePostgresInsertPayload<ChatRow>) => {
                   const r = payload.new;
-                  const pidNow = promptIdRef.current;
-                  if (pidNow && r.prompt_id && r.prompt_id !== pidNow) return;
+                  if (promptId && r.prompt_id && r.prompt_id !== promptId) return;
                   setItems((prev) => [...prev, { id: Math.random().toString(36), user_id: r.user_id, nickname: r.nickname || undefined, text: r.text, created_at: r.created_at }]);
                 })
                 .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_rooms', filter: `id=eq.${room}` }, async (payload: RealtimePostgresChangesPayload<{ current_prompt_id?: string|null }>) => {
@@ -512,9 +525,9 @@ export default function PlayCategoryPage({ params }: PageProps) {
                     setSeenPromptIds(new Set([p.id]));
                   }
                 })
-                .subscribe((status) => { if (status === 'SUBSCRIBED') { setRealtimeReady(true); setRtOk(true); } });
-              return () => { try { setRealtimeReady(false); setRtOk(false); supa.removeChannel(channel); } catch {} };
-            }, [room]);
+                .subscribe((status) => { if (status === 'SUBSCRIBED') setRealtimeReady(true); });
+              return () => { try { setRealtimeReady(false); supa.removeChannel(channel); } catch {} };
+            }, [room, promptId]);
 
             // 不再在切题时重置昵称；房间仅在首次进入时由 initialNeedNick 控制是否弹窗
             async function send() {
@@ -535,33 +548,34 @@ export default function PlayCategoryPage({ params }: PageProps) {
               }
               lastSentAtRef.current = Date.now();
               setInput("");
-              // 发送后0.5秒仅轮询一次兜底，确保双方都能看到最新消息
-              if (oneShotPollRef.current) { try { clearTimeout(oneShotPollRef.current); } catch {} }
-              oneShotPollRef.current = window.setTimeout(async () => {
-                try {
-                  const qs = new URLSearchParams({ room, limit: "50" });
-                  if (effectivePid) qs.set("prompt", String(effectivePid));
-                  const r = await fetch(`/api/chat/messages?${qs.toString()}`);
-                  const j = await r.json();
-                  if (Array.isArray(j.items)) {
-                    type ChatMsg = { id: string; user_id: string; nickname?: string; text: string; created_at: string };
-                    const fetched = j.items as Array<ChatMsg>;
-                    setItems((prev) => {
-                      const byId = new Map<string, ChatMsg>();
-                      for (const m of prev) byId.set(m.id, m);
-                      for (const m of fetched) byId.set(m.id, m);
-                      const merged = Array.from(byId.values());
-                      merged.sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-                      return merged;
-                    });
-                  }
-                } catch {}
-                finally { oneShotPollRef.current = null; }
-              }, 500);
             }
             // 轮询兜底（Realtime 未生效时也能看到对方）
-            // 暂时停用消息轮询兜底，完全依赖 Realtime
-            useEffect(() => { return () => {}; }, []);
+            useEffect(() => {
+              if (!room) return;
+              if (realtimeReady) return; // 有实时就不轮询
+              const t = setInterval(async () => {
+                if (isTyping) return; // 正在输入不打扰
+                const last = lastSentAtRef.current || 0;
+                if (Date.now() - last < 2000) return; // 发送后2秒内不刷新
+                const qs = new URLSearchParams({ room, limit: "50" });
+                if (promptId) qs.set("prompt", String(promptId));
+                const res = await fetch(`/api/chat/messages?${qs.toString()}`);
+                const data = await res.json();
+                if (Array.isArray(data.items)) {
+                  type ChatMsg = { id: string; user_id: string; nickname?: string; text: string; created_at: string };
+                  const fetched = data.items as Array<ChatMsg>;
+                  setItems((prev) => {
+                    const byId = new Map<string, ChatMsg>();
+                    for (const m of prev) byId.set(m.id, m);
+                    for (const m of fetched) byId.set(m.id, m);
+                    const merged = Array.from(byId.values());
+                    merged.sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+                    return merged;
+                  });
+                }
+              }, 4000);
+              return () => clearInterval(t);
+            }, [promptId, realtimeReady, isTyping, lastSentAtRef]);
             // 输入时 ping，防止超时结束
             useEffect(() => {
               if (!room) return;
@@ -572,26 +586,42 @@ export default function PlayCategoryPage({ params }: PageProps) {
               return () => clearTimeout(t);
             }, [room, input]);
 
-            // 停用题目同步轮询（完全依赖 Realtime）
-            useEffect(() => { return () => {}; }, []);
+            // 轮询房间当前题目作为兜底（Realtime 失败时也能同步），每2秒对比不同则切换
+            useEffect(() => {
+              if (!room) return;
+              const t = setInterval(async () => {
+                try {
+                  const rr = await fetch(`/api/chat/room?room_id=${encodeURIComponent(room)}`);
+                  const rj = await rr.json();
+                  const pid: string | null = rj?.current_prompt_id ?? null;
+                  if (!pid) return;
+                  const collection: Array<{ id: string; type: PromptType; text: string }> =
+                    (remoteItems.length ? remoteItems.map(({id,type,text})=>({id,type,text})) : prompts.map(({id,type,text})=>({id,type,text})));
+                  if (currentPrompt?.id === pid) return;
+                  const hit = collection.find(x=>x.id===pid);
+                  if (hit) {
+                    const p: Prompt = { id: hit.id, text: hit.text, type: hit.type };
+                    setCurrentPrompt(p);
+                    setSeenPromptIds(new Set([p.id]));
+                  }
+                } catch {}
+              }, 2000);
+              return () => clearInterval(t);
+            }, [room, remoteItems, currentPrompt?.id, prompts]);
             return (
-              <div className="fixed inset-x-0 bottom-8 flex justify-center pointer-events-none">
+              <div className="fixed inset-x-0 bottom-4 flex justify-center pointer-events-none">
                 <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(168,85,247,.25)] p-3">
                   {needNick && (
-                    <>
-                      <div className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-md" />
-                      <div className="fixed inset-0 z-[10001] flex items-center justify-center">
-                        <div className="w-[92%] max-w-sm rounded-xl border border-purple-500/60 bg-black/90 text-white p-5 shadow-[0_10px_40px_rgba(168,85,247,.35)]">
-                          <h2 className="text-lg font-semibold mb-2">{lang==='en'?'Set your nickname':'请输入昵称'}</h2>
-                          <p className="text-sm opacity-80 mb-1">{lang==='en'?'This will be shown to your partner in this room only.':'只用于当前房间展示，不会被保存。'}</p>
-                          <p className="text-sm opacity-80 mb-3">{lang==='en'?'Note: Max 5 messages per person per question.':'注：每道问题每人仅限发送五句消息。'}</p>
-                          <div className="flex items-center gap-2">
-                            <input autoFocus value={nick} onChange={(e)=>setNick(e.target.value)} placeholder={lang==='en'?'Nickname':'昵称'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-sm text-white placeholder:text-white/40" />
-                            <button onClick={()=>{ if(nick.trim()){ setNeedNick(false); try { sessionStorage.setItem(`chat_nick_set_${room}`,'1'); sessionStorage.setItem(`chat_nick_${room}`, nick.trim()); } catch {} } }} className="px-3 py-2 rounded bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50" disabled={!nick.trim()}>{lang==='en'?'Confirm':'确定'}</button>
-                          </div>
+                    <div className="fixed inset-x-0 z-50 bottom-28 flex items-center justify-center">
+                      <div className="w-[92%] max-w-sm rounded-xl border border-purple-500/60 bg-black/90 text-white p-5 shadow-[0_10px_40px_rgba(168,85,247,.35)]">
+                        <h2 className="text-lg font-semibold mb-2">{lang==='en'?'Set your nickname':'请输入昵称'}</h2>
+                        <p className="text-sm opacity-80 mb-3">{lang==='en'?'This will be shown to your partner in this room only.':'只用于当前房间展示，不会被保存。'}</p>
+                        <div className="flex items-center gap-2">
+                          <input autoFocus value={nick} onChange={(e)=>setNick(e.target.value)} placeholder={lang==='en'?'Nickname':'昵称'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-sm text-white placeholder:text-white/40" />
+                          <button onClick={()=>{ if(nick.trim()){ setNeedNick(false); try { sessionStorage.setItem(`chat_nick_set_${room}`,'1'); sessionStorage.setItem(`chat_nick_${room}`, nick.trim()); } catch {} } }} className="px-3 py-2 rounded bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50" disabled={!nick.trim()}>{lang==='en'?'Confirm':'确定'}</button>
                         </div>
                       </div>
-                    </>
+                    </div>
                   )}
                   <div className="text-xs text-purple-200/80 mb-2 flex items-center justify-between">
                     <span>{lang === 'en' ? 'Chat' : '聊天'} {room ? `#${room}` : ''}</span>
@@ -600,7 +630,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
                   <div className="max-h-48 overflow-auto space-y-2 pr-1">
                     {items.map((m, i) => (
                       <div key={m.id + i} className={`text-sm ${m.user_id === myId ? 'text-purple-200' : 'text-white/90'}`}>
-                        <span className="opacity-70 mr-1">{m.nickname || (m.user_id === myId ? (lang==='en'?'Me':'我') : 'Guest')}：</span>
+                        <span className="opacity-70 mr-2">{m.nickname || (m.user_id === myId ? (lang==='en'?'Me':'我') : 'Guest')}：</span>
                         <span>{m.text}</span>
                       </div>
                     ))}

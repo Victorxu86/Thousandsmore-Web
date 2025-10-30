@@ -48,6 +48,8 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
   const [peerStatus, setPeerStatus] = useState<"idle"|"joined"|"left">("idle");
   const statusHideRef = useRef<number | null>(null);
   const hasSentJoinRef = useRef<boolean>(false);
+  const chatInputRef = useRef<HTMLInputElement | null>(null);
+  const nickInputRef = useRef<HTMLInputElement | null>(null);
 
   async function copyLinkInModal() {
     try {
@@ -185,6 +187,7 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
     }
     lastSentAtRef.current = Date.now();
     setInput("");
+    try { chatInputRef.current?.blur(); } catch {}
     // 发送后做一次兜底刷新，确保双方一致（仅一次）
     if (oneShotPollRef.current) { try { clearTimeout(oneShotPollRef.current); } catch {} }
     oneShotPollRef.current = window.setTimeout(async () => {
@@ -254,8 +257,8 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
                 <h3 className="text-lg font-semibold mb-2">{lang==='en'?'Set your nickname':'请输入昵称'}</h3>
                 <p className="text-sm opacity-80 mb-3">{lang==='en'?'This will be shown to your partner in this room only.':'只用于当前房间展示，不会被保存。'}</p>
                 <div className="flex items-center gap-2">
-                  <input autoFocus value={nick} onChange={(e)=>setNick(e.target.value)} placeholder={lang==='en'?'Nickname':'昵称'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-sm text-white placeholder:text-white/40" />
-                  <button onClick={()=>{ if(nick.trim()){ setNeedNick(false); try { sessionStorage.setItem(`chat_nick_set_${room}`,'1'); sessionStorage.setItem(`chat_nick_${room}`, nick.trim()); } catch {} } }} className="px-4 py-2 rounded-full bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50" disabled={!nick.trim()}>{lang==='en'?'Confirm':'确定'}</button>
+                  <input ref={nickInputRef} autoFocus value={nick} onChange={(e)=>setNick(e.target.value)} placeholder={lang==='en'?'Nickname':'昵称'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-base text-white placeholder:text-white/40" />
+                  <button onClick={()=>{ if(nick.trim()){ try { nickInputRef.current?.blur(); } catch {} setNeedNick(false); try { sessionStorage.setItem(`chat_nick_set_${room}`,'1'); sessionStorage.setItem(`chat_nick_${room}`, nick.trim()); } catch {} } }} className="px-4 py-2 rounded-full bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50" disabled={!nick.trim()}>{lang==='en'?'Confirm':'确定'}</button>
                 </div>
                 <div className="mt-3 flex items-center justify-between">
                   <button onClick={copyLinkInModal} className="px-3 py-1.5 rounded-full border border-purple-500/60 text-xs hover:bg-white/10">{lang==='en'?'Copy Link':'复制链接'}</button>
@@ -299,7 +302,7 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
           <span className="text-xs opacity-70">{myCount}/5</span>
         </div>
         <div className="mt-1 flex items-center gap-2">
-          <input value={input} onChange={(e)=>setInput(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') send(); }} placeholder={lang==='en'?'Type a message':'输入消息'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-sm text-white placeholder:text-white/40" />
+          <input ref={chatInputRef} value={input} onChange={(e)=>setInput(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') send(); }} placeholder={lang==='en'?'Type a message':'输入消息'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-base text-white placeholder:text-white/40" />
           <button onClick={send} disabled={!nick.trim() || !currentPrompt?.id || myCount>=5} className="px-3 py-2 rounded bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50">{lang==='en'?'Send':'发送'}</button>
         </div>
       </div>

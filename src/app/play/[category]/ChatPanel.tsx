@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { connectChat, genRoomCode } from "@/lib/chat";
+import { genRoomCode } from "@/lib/chat";
 
 type Props = {
   theme: {
@@ -23,10 +23,8 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
   const [code, setCode] = useState("");
   const [inviteCode, setInviteCode] = useState<string>("");
   const [directLink, setDirectLink] = useState<string>("");
-  const [messages, setMessages] = useState<ChatMsg[]>([]);
+  // 轮询模式不显示消息列表，仅本地统计与发送
   const [input, setInput] = useState("");
-  const [typing, setTyping] = useState(false);
-  const [peerTyping, setPeerTyping] = useState(false);
   const [quotaUsed, setQuotaUsed] = useState(0);
   const quotaMax = 5;
   const [showInvite, setShowInvite] = useState(false);
@@ -38,18 +36,13 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
   // roomToken 仅通过 onRoomToken 向父组件传递，不在本组件内持久化，避免未使用警告
   const [forcedTransport, setForcedTransport] = useState<"auto"|"xhr_polling"|"web_socket">("auto");
   const [debug, setDebug] = useState<boolean>(false);
-  const [connState, setConnState] = useState<string>("idle");
-  const [membersCount, setMembersCount] = useState<number>(0);
-  const [fallbackPolling, setFallbackPolling] = useState<boolean>(false);
   const lastTsRef = useRef<number>(0);
   const pollTimerRef = useRef<number | null>(null);
 
-  const clientRef = useRef<Awaited<ReturnType<typeof connectChat>> | null>(null);
   const me = useMemo(() => `u_${Math.random().toString(36).slice(2, 8)}`, []);
 
   useEffect(() => {
-    // 切题重置配额与消息区，但保持连接
-    setMessages([]);
+    // 切题重置配额
     setQuotaUsed(0);
   }, [currentQuestionId]);
 
@@ -103,7 +96,6 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
     setWaitingStatus("waiting");
     setInviteUntil(Date.now() + 30*60*1000);
     // 启用轮询直连：不依赖 WebSocket，直接开始轮询并标记连接
-    setFallbackPolling(true);
     startPolling(c);
     setConnected(true);
     // 为来宾提供房主权限直达：把 roomToken 写进直达链接
@@ -111,7 +103,7 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
       const res = await fetch(`/api/chat/room-token`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code: c, category: categoryId }) });
       const data = await res.json();
       if (res.ok && data.token) {
-        onRoomToken && onRoomToken(data.token);
+        if (onRoomToken) onRoomToken(data.token);
         try {
           const url = new URL(directLink || window.location.href);
           url.searchParams.set("roomToken", data.token);
@@ -126,7 +118,6 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
     if (!joinCode) return;
     // 统一使用轮询直连，避免长连接限制
     setConnecting(false);
-    setFallbackPolling(true);
     setCode(joinCode);
     startPolling(joinCode);
     setConnected(true);
@@ -165,11 +156,7 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
               }
               continue;
             }
-            if (m.name === "msg") {
-              const d = m.data as { id: string; sender: string; text: string; ts: number; q?: string };
-              if (currentQuestionId && d.q && d.q !== currentQuestionId) continue;
-              setMessages((prev) => [...prev, { id: d.id, sender: d.sender, text: d.text, ts: d.ts }]);
-            }
+            // 目前不显示消息列表，忽略 msg 渲染
           }
         }
       } catch {}
@@ -177,32 +164,14 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
   }
 
   async function send() {
-    const client = clientRef.current;
     if (!input.trim() || quotaUsed >= quotaMax) return;
     const msg: ChatMsg = { id: `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, sender: me, text: input.trim(), ts: Date.now() };
-    if (!fallbackPolling) {
-      await client.channel.publish("msg", { ...msg, q: currentQuestionId || null });
-    } else {
-      await fetch(`/api/chat/send`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code, name: 'msg', data: { ...msg, q: currentQuestionId || null } }) });
-    }
-    setMessages((prev) => [...prev, msg]);
+    await fetch(`/api/chat/send`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ code, name: 'msg', data: { ...msg, q: currentQuestionId || null } }) });
     setInput("");
     setQuotaUsed((n) => n + 1);
   }
 
-  async function onTyping(v: string) {
-    setInput(v);
-    const client = clientRef.current;
-    if (!client) return;
-    if (!typing) {
-      setTyping(true);
-      try { await client.channel.publish("typing", { sender: me, typing: true }); } catch {}
-      setTimeout(async () => {
-        setTyping(false);
-        try { await client.channel.publish("typing", { sender: me, typing: false }); } catch {}
-      }, 1500);
-    }
-  }
+  function onTyping(v: string) { setInput(v); }
 
   return (
     <div className="w-full max-w-2xl mt-6">
@@ -212,21 +181,15 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
         <button onClick={()=>{ setJoinError(""); setConnecting(false); setShowJoin(true); }} disabled={connected} className={`px-3 py-2 rounded-full border text-sm ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent}`}>{connected?"已加入":"加入对话"}</button>
         {connected && (
           <button onClick={async ()=>{
-            const client = clientRef.current;
-            if (client) { try { await client.disconnect(); } catch {} }
-            clientRef.current = null;
             setConnected(false);
-            setMessages([]);
             setQuotaUsed(0);
             setInviteCode("");
             setDirectLink("");
             setCode("");
             setShowInvite(false);
             setShowJoin(false);
-            setTyping(false);
-            setPeerTyping(false);
             setWaitingStatus("idle");
-            onRoomToken && onRoomToken(null);
+            if (onRoomToken) onRoomToken(null);
           }} className={`px-3 py-2 rounded-full border text-sm ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent}`}>退出并清空</button>
         )}
       </div>

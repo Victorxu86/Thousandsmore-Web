@@ -45,6 +45,9 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
   const typingHideRef = useRef<number | null>(null);
   const lastTypingSentAtRef = useRef<number>(0);
   const channelRef = useRef<RealtimeChannel | null>(null);
+  const [peerStatus, setPeerStatus] = useState<"idle"|"joined"|"left">("idle");
+  const statusHideRef = useRef<number | null>(null);
+  const hasSentJoinRef = useRef<boolean>(false);
 
   async function copyLinkInModal() {
     try {
@@ -95,24 +98,31 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
         if (promptId && r.prompt_id && r.prompt_id !== promptId) return;
         setItems((prev) => [...prev, { id: Math.random().toString(36), user_id: r.user_id, nickname: r.nickname || undefined, text: r.text, created_at: r.created_at }]);
       })
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_rooms', filter: `id=eq.${room}` }, async (payload: RealtimePostgresChangesPayload<{ current_prompt_id?: string|null }>) => {
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_rooms', filter: `id=eq.${room}` }, async (payload: RealtimePostgresChangesPayload<{ current_prompt_id?: string|null; ended_at?: string|null }>) => {
         const pid = (payload.new as { current_prompt_id?: string|null } | null)?.current_prompt_id ?? null;
-        if (!pid) return;
-        const collection: Array<{ id: string; type: PromptType; text: string }> = (remoteItems.length ? remoteItems : prompts);
-        let hit = collection.find(x=>x.id===pid);
-        if (!hit) {
-          try {
-            const r = await fetch(`/api/prompts/one?id=${encodeURIComponent(pid)}&lang=${lang}`);
-            const pj = await r.json();
-            if (r.ok && pj?.id) {
-              hit = { id: pj.id, text: pj.text, type: pj.type };
-            }
-          } catch {}
+        if (pid) {
+          const collection: Array<{ id: string; type: PromptType; text: string }> = (remoteItems.length ? remoteItems : prompts);
+          let hit = collection.find(x=>x.id===pid);
+          if (!hit) {
+            try {
+              const r = await fetch(`/api/prompts/one?id=${encodeURIComponent(pid)}&lang=${lang}`);
+              const pj = await r.json();
+              if (r.ok && pj?.id) {
+                hit = { id: pj.id, text: pj.text, type: pj.type };
+              }
+            } catch {}
+          }
+          if (hit) {
+            const p: Prompt = { id: hit.id, text: hit.text, type: hit.type };
+            setCurrentPrompt(p);
+            setSeenPromptIds(new Set([p.id]));
+          }
         }
-        if (hit) {
-          const p: Prompt = { id: hit.id, text: hit.text, type: hit.type };
-          setCurrentPrompt(p);
-          setSeenPromptIds(new Set([p.id]));
+        const ended = (payload.new as { ended_at?: string|null } | null)?.ended_at || null;
+        if (ended) {
+          setPeerStatus("left");
+          if (statusHideRef.current) { try { clearTimeout(statusHideRef.current); } catch {} }
+          statusHideRef.current = window.setTimeout(() => setPeerStatus("idle"), 3500);
         }
       })
       .on('broadcast', { event: 'typing' }, (payload: { payload?: { user_id?: string; prompt_id?: string | null } }) => {
@@ -123,6 +133,16 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
         setPeerTyping(true);
         if (typingHideRef.current) { try { clearTimeout(typingHideRef.current); } catch {} }
         typingHideRef.current = window.setTimeout(() => setPeerTyping(false), 2500);
+      })
+      .on('broadcast', { event: 'presence' }, (payload: { payload?: { action?: string; user_id?: string } }) => {
+        const fromUser = payload?.payload?.user_id || '';
+        const action = payload?.payload?.action || '';
+        if (!fromUser || fromUser === myId) return;
+        if (action === 'join') {
+          setPeerStatus('joined');
+          if (statusHideRef.current) { try { clearTimeout(statusHideRef.current); } catch {} }
+          statusHideRef.current = window.setTimeout(() => setPeerStatus('idle'), 3000);
+        }
       })
       .subscribe((status) => { if (status === 'SUBSCRIBED') setRealtimeReady(true); });
     channelRef.current = channel;
@@ -138,6 +158,15 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
       try { channelRef.current?.send({ type: 'broadcast', event: 'typing', payload: { user_id: myId, prompt_id: promptId || null } }); } catch {}
     }
   }, [isTyping, room, myId, promptId]);
+
+  // 订阅成功后广播一次“已加入”
+  useEffect(() => {
+    if (!realtimeReady) return;
+    if (!myId) return;
+    if (hasSentJoinRef.current) return;
+    hasSentJoinRef.current = true;
+    try { channelRef.current?.send({ type: 'broadcast', event: 'presence', payload: { action: 'join', user_id: myId } }); } catch {}
+  }, [realtimeReady, myId]);
 
   async function send() {
     if (!room || !myId || !input.trim()) return;
@@ -256,8 +285,14 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
           )}
         </div>
         <div className="mt-2 flex items-center justify-between">
-          <span className="text-xs opacity-70 h-4">
-            {peerTyping ? (lang==='en'?'Partner is typing...':'对方正在输入...') : ''}
+          <span className="text-xs h-4">
+            {peerStatus === 'joined' ? (
+              <span className="text-green-400">{lang==='en'?'Partner joined':'对方已加入'}</span>
+            ) : peerStatus === 'left' ? (
+              <span className="text-red-400">{lang==='en'?'Partner left':'对方已离开'}</span>
+            ) : peerTyping ? (
+              <span className="opacity-70">{lang==='en'?'Partner is typing...':'对方正在输入...'}</span>
+            ) : null}
           </span>
           <span className="text-xs opacity-70">{myCount}/5</span>
         </div>

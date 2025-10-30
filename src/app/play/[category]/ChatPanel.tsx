@@ -129,6 +129,18 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
     setFallbackPolling(true);
     startPolling(joinCode);
     setConnected(true);
+    // 发送加入信号，让邀请方结束“等待加入中”
+    try {
+      await fetch(`/api/chat/send`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          code: joinCode,
+          name: 'join',
+          data: { id: `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, sender: me, text: 'join', ts: Date.now() }
+        })
+      });
+    } catch {}
     if (!silent) setShowJoin(false);
   }
 
@@ -144,6 +156,14 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
           const newMsgs = data.items as Array<{ name: string; data: { id: string; sender: string; text: string; ts: number; q?: string }; ts: number }>;
           for (const m of newMsgs) {
             lastTsRef.current = Math.max(lastTsRef.current, m.ts || 0);
+            if (m.name === "join") {
+              const d = m.data as { id: string; sender: string; text: string; ts: number; q?: string };
+              if (d && d.sender !== me) {
+                setWaitingStatus("joined");
+                setTimeout(() => { setShowInvite(false); }, 2000);
+              }
+              continue;
+            }
             if (m.name === "msg") {
               const d = m.data as { id: string; sender: string; text: string; ts: number; q?: string };
               if (currentQuestionId && d.q && d.q !== currentQuestionId) continue;

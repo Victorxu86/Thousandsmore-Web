@@ -10,6 +10,200 @@ import { useLang, setLang } from "@/lib/lang";
 import { getSupabaseBrowser } from "@/lib/supabase";
 import type { RealtimePostgresInsertPayload, RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 
+type ChatBoxProps = {
+  room: string;
+  lang: string;
+  currentPrompt: Prompt | null;
+  setCurrentPrompt: (p: Prompt) => void;
+  setSeenPromptIds: (s: Set<string>) => void;
+  remoteItems: Array<{ id: string; type: PromptType; text: string }>;
+  prompts: Array<{ id: string; type: PromptType; text: string }>;
+  showToast: (msg: string) => void;
+};
+
+function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds, remoteItems, prompts, showToast }: ChatBoxProps) {
+  const [loaded, setLoaded] = useState(false);
+  const [items, setItems] = useState<Array<{ id: string; user_id: string; nickname?: string; text: string; created_at: string }>>([]);
+  const [myId, setMyId] = useState<string>("");
+  const initialNick = (() => {
+    try { return sessionStorage.getItem(`chat_nick_${room}`) || ""; } catch { return ""; }
+  })();
+  const initialNeedNick = (() => {
+    try { return sessionStorage.getItem(`chat_nick_set_${room}`) === '1' ? false : true; } catch { return true; }
+  })();
+  const [nick, setNick] = useState<string>(initialNick);
+  const [needNick, setNeedNick] = useState<boolean>(initialNeedNick);
+  const [input, setInput] = useState("");
+  const [realtimeReady, setRealtimeReady] = useState<boolean>(false);
+  const isTyping = input.trim().length > 0;
+  const lastSentAtRef = useRef<number>(0);
+  const oneShotPollRef = useRef<number | null>(null);
+  const promptId = currentPrompt?.id || null;
+
+  useEffect(() => {
+    if (!room) return;
+    // 生成临时用户ID
+    let uid = "";
+    try { uid = sessionStorage.getItem("chat_uid") || ""; } catch {}
+    if (!uid) { uid = Math.random().toString(36).slice(2, 10); try { sessionStorage.setItem("chat_uid", uid); } catch {} }
+    setMyId(uid);
+    // 载入最近消息
+    (async () => {
+      const qs = new URLSearchParams({ room, limit: "50" });
+      if (promptId) qs.set("prompt", promptId);
+      const res = await fetch(`/api/chat/messages?${qs.toString()}`);
+      const data = await res.json();
+      setItems(Array.isArray(data.items) ? data.items : []);
+      setLoaded(true);
+    })();
+    // 实时订阅
+    const supa = getSupabaseBrowser();
+    type ChatRow = { room_id: string; user_id: string; text: string; prompt_id?: string | null; nickname?: string | null; created_at: string };
+    const channel = supa.channel(`room:${room}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `room_id=eq.${room}` }, (payload: RealtimePostgresInsertPayload<ChatRow>) => {
+        const r = payload.new;
+        if (promptId && r.prompt_id && r.prompt_id !== promptId) return;
+        setItems((prev) => [...prev, { id: Math.random().toString(36), user_id: r.user_id, nickname: r.nickname || undefined, text: r.text, created_at: r.created_at }]);
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_rooms', filter: `id=eq.${room}` }, async (payload: RealtimePostgresChangesPayload<{ current_prompt_id?: string|null }>) => {
+        const pid = (payload.new as { current_prompt_id?: string|null } | null)?.current_prompt_id ?? null;
+        if (!pid) return;
+        const collection: Array<{ id: string; type: PromptType; text: string }> = (remoteItems.length ? remoteItems : prompts);
+        let hit = collection.find(x=>x.id===pid);
+        if (!hit) {
+          try {
+            const r = await fetch(`/api/prompts/one?id=${encodeURIComponent(pid)}&lang=${lang}`);
+            const pj = await r.json();
+            if (r.ok && pj?.id) {
+              hit = { id: pj.id, text: pj.text, type: pj.type };
+            }
+          } catch {}
+        }
+        if (hit) {
+          const p: Prompt = { id: hit.id, text: hit.text, type: hit.type };
+          setCurrentPrompt(p);
+          setSeenPromptIds(new Set([p.id]));
+        }
+      })
+      .subscribe((status) => { if (status === 'SUBSCRIBED') setRealtimeReady(true); });
+    return () => { try { setRealtimeReady(false); supa.removeChannel(channel); } catch {} };
+  }, [room, promptId, lang, remoteItems, prompts, setCurrentPrompt, setSeenPromptIds]);
+
+  async function send() {
+    if (!room || !myId || !input.trim()) return;
+    if (!nick.trim()) { showToast(lang==='en'? 'Please set a nickname' : '请先设置昵称'); return; }
+    const effectivePid = currentPrompt?.id || null;
+    if (!effectivePid) { showToast(lang==='en'? 'Please wait for the question to load' : '请等待题目加载完成'); return; }
+    const payload = { room_id: room, user_id: myId, nickname: nick || null, prompt_id: effectivePid, text: input.trim() };
+    const res = await fetch(`/api/chat/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+    const data = await res.json();
+    if (!res.ok) { showToast(data.error || '发送失败'); return; }
+    if (!realtimeReady) {
+      setItems((prev) => [...prev, { id: Math.random().toString(36), user_id: myId, nickname: nick || undefined, text: input.trim(), created_at: new Date().toISOString() }]);
+    }
+    lastSentAtRef.current = Date.now();
+    setInput("");
+    // 发送后做一次兜底刷新，确保双方一致（仅一次）
+    if (oneShotPollRef.current) { try { clearTimeout(oneShotPollRef.current); } catch {} }
+    oneShotPollRef.current = window.setTimeout(async () => {
+      try {
+        const qs = new URLSearchParams({ room, limit: "50" });
+        if (effectivePid) qs.set("prompt", String(effectivePid));
+        const r = await fetch(`/api/chat/messages?${qs.toString()}`);
+        const j = await r.json();
+        if (Array.isArray(j.items)) {
+          type ChatMsg = { id: string; user_id: string; nickname?: string; text: string; created_at: string };
+          const fetched = j.items as Array<ChatMsg>;
+          setItems((prev) => {
+            const byId = new Map<string, ChatMsg>();
+            for (const m of prev) byId.set(m.id, m);
+            for (const m of fetched) byId.set(m.id, m);
+            const merged = Array.from(byId.values());
+            merged.sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+            return merged;
+          });
+        }
+      } catch {}
+      finally { oneShotPollRef.current = null; }
+    }, 500);
+  }
+
+  // 输入时 ping，防止超时结束
+  useEffect(() => {
+    if (!room) return;
+    if (!input) return;
+    const t = setTimeout(() => {
+      fetch('/api/chat/room/ping', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room_id: room }) });
+    }, 800);
+    return () => clearTimeout(t);
+  }, [room, input]);
+
+  // 轮询房间当前题目作为兜底（Realtime 失败时也能同步），每2秒对比不同则切换；正在输入时跳过
+  useEffect(() => {
+    if (!room) return;
+    const t = setInterval(async () => {
+      if (isTyping) return; // 输入中暂停兜底，避免重渲导致输入丢失
+      try {
+        const rr = await fetch(`/api/chat/room?room_id=${encodeURIComponent(room)}`);
+        const rj = await rr.json();
+        const pid: string | null = rj?.current_prompt_id ?? null;
+        if (!pid) return;
+        const collection: Array<{ id: string; type: PromptType; text: string }> = (remoteItems.length ? remoteItems : prompts);
+        if (currentPrompt?.id === pid) return;
+        const hit = collection.find(x=>x.id===pid);
+        if (hit) {
+          const p: Prompt = { id: hit.id, text: hit.text, type: hit.type };
+          setCurrentPrompt(p);
+          setSeenPromptIds(new Set([p.id]));
+        }
+      } catch {}
+    }, 2000);
+    return () => clearInterval(t);
+  }, [room, remoteItems, currentPrompt?.id, prompts, isTyping, setCurrentPrompt, setSeenPromptIds]);
+
+  return (
+    <div className="fixed inset-x-0 bottom-4 flex justify-center pointer-events-none">
+      <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(168,85,247,.25)] p-3">
+        {needNick && typeof window !== 'undefined' && createPortal(
+          (
+            <div className="fixed inset-0 z-[10000] flex items-center justify-center">
+              <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+              <div className="relative z-10 w-[92%] max-w-sm rounded-xl bg-black/90 text-white p-5 border border-purple-500/60 shadow-[0_10px_40px_rgba(168,85,247,.35)]">
+                <h3 className="text-lg font-semibold mb-2">{lang==='en'?'Set your nickname':'请输入昵称'}</h3>
+                <p className="text-sm opacity-80 mb-4">{lang==='en'?'This will be shown to your partner in this room only.':'只用于当前房间展示，不会被保存。'}</p>
+                <div className="flex items-center gap-2">
+                  <input autoFocus value={nick} onChange={(e)=>setNick(e.target.value)} placeholder={lang==='en'?'Nickname':'昵称'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-sm text-white placeholder:text-white/40" />
+                  <button onClick={()=>{ if(nick.trim()){ setNeedNick(false); try { sessionStorage.setItem(`chat_nick_set_${room}`,'1'); sessionStorage.setItem(`chat_nick_${room}`, nick.trim()); } catch {} } }} className="px-4 py-2 rounded-full bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50" disabled={!nick.trim()}>{lang==='en'?'Confirm':'确定'}</button>
+                </div>
+              </div>
+            </div>
+          ),
+          document.body
+        )}
+        <div className="text-xs text-purple-200/80 mb-2 flex items-center justify-between">
+          <span>{lang === 'en' ? 'Chat' : '聊天'} {room ? `#${room}` : ''}</span>
+          {!room && <span className="opacity-70">{lang === 'en' ? 'Create a chat to start' : '创建房间后开始聊天'}</span>}
+        </div>
+        <div className="max-h-48 overflow-auto space-y-2 pr-1">
+          {items.map((m, i) => (
+            <div key={m.id + i} className={`text-sm ${m.user_id === myId ? 'text-purple-200' : 'text-white/90'}`}>
+              <span className="opacity-70 mr-2">{m.nickname || (m.user_id === myId ? (lang==='en'?'Me':'我') : 'Guest')}：</span>
+              <span>{m.text}</span>
+            </div>
+          ))}
+          {loaded && items.length === 0 && (
+            <div className="text-sm opacity-70">{lang==='en'?'No messages yet':'还没有消息'}</div>
+          )}
+        </div>
+        <div className="mt-3 flex items-center gap-2">
+          <input value={input} onChange={(e)=>setInput(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') send(); }} placeholder={lang==='en'?'Type a message':'输入消息'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-sm text-white placeholder:text-white/40" />
+          <button onClick={send} disabled={!nick.trim() || !currentPrompt?.id} className="px-3 py-2 rounded bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50">{lang==='en'?'Send':'发送'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 type PageProps = {
   params: { category: string };
 };
@@ -455,204 +649,18 @@ export default function PlayCategoryPage({ params }: PageProps) {
         )}
 
         {/* 底部聊天面板：黑+紫主题，固定中下区域 */}
-        {(() => {
-          // 简化：使用内联组件以减少文件改动
-          function ChatBox() {
-            const [loaded, setLoaded] = useState(false);
-            const [items, setItems] = useState<Array<{ id: string; user_id: string; nickname?: string; text: string; created_at: string }>>([]);
-            const [myId, setMyId] = useState<string>("");
-            const roomParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('room') : null;
-            const initialNick = (() => {
-              try {
-                const r = roomParam; if (!r) return "";
-                return sessionStorage.getItem(`chat_nick_${r}`) || "";
-              } catch { return ""; }
-            })();
-            const initialNeedNick = (() => {
-              try {
-                const r = roomParam; if (!r) return true;
-                return sessionStorage.getItem(`chat_nick_set_${r}`) === '1' ? false : true;
-              } catch { return true; }
-            })();
-            const [nick, setNick] = useState<string>(initialNick);
-            const [needNick, setNeedNick] = useState<boolean>(initialNeedNick);
-            const [input, setInput] = useState("");
-            const [realtimeReady, setRealtimeReady] = useState<boolean>(false);
-            const isTyping = input.trim().length > 0;
-            const lastSentAtRef = useRef<number>(0);
-            const oneShotPollRef = useRef<number | null>(null);
-            const promptId = currentPrompt?.id || null;
-            useEffect(() => {
-              if (!room) return;
-              // 生成临时用户ID
-              let uid = "";
-              try { uid = sessionStorage.getItem("chat_uid") || ""; } catch {}
-              if (!uid) { uid = Math.random().toString(36).slice(2, 10); try { sessionStorage.setItem("chat_uid", uid); } catch {} }
-              setMyId(uid);
-              // 载入最近消息
-              (async () => {
-                const qs = new URLSearchParams({ room, limit: "50" });
-                if (promptId) qs.set("prompt", promptId);
-                const res = await fetch(`/api/chat/messages?${qs.toString()}`);
-                const data = await res.json();
-                setItems(Array.isArray(data.items) ? data.items : []);
-                setLoaded(true);
-              })();
-              // 实时订阅
-              const supa = getSupabaseBrowser();
-              type ChatRow = { room_id: string; user_id: string; text: string; prompt_id?: string | null; nickname?: string | null; created_at: string };
-              const channel = supa.channel(`room:${room}`)
-                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `room_id=eq.${room}` }, (payload: RealtimePostgresInsertPayload<ChatRow>) => {
-                  const r = payload.new;
-                  if (promptId && r.prompt_id && r.prompt_id !== promptId) return;
-                  setItems((prev) => [...prev, { id: Math.random().toString(36), user_id: r.user_id, nickname: r.nickname || undefined, text: r.text, created_at: r.created_at }]);
-                })
-                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_rooms', filter: `id=eq.${room}` }, async (payload: RealtimePostgresChangesPayload<{ current_prompt_id?: string|null }>) => {
-                  const pid = (payload.new as { current_prompt_id?: string|null } | null)?.current_prompt_id ?? null;
-                  if (!pid) return;
-                  const collection: Array<{ id: string; type: PromptType; text: string }> =
-                    (remoteItems.length ? remoteItems.map(({id,type,text})=>({id,type,text})) : prompts.map(({id,type,text})=>({id,type,text})));
-                  let hit = collection.find(x=>x.id===pid);
-                  if (!hit) {
-                    try {
-                      const r = await fetch(`/api/prompts/one?id=${encodeURIComponent(pid)}&lang=${lang}`);
-                      const pj = await r.json();
-                      if (r.ok && pj?.id) {
-                        hit = { id: pj.id, text: pj.text, type: pj.type };
-                      }
-                    } catch {}
-                  }
-                  if (hit) {
-                    const p: Prompt = { id: hit.id, text: hit.text, type: hit.type };
-                    setCurrentPrompt(p);
-                    setSeenPromptIds(new Set([p.id]));
-                  }
-                })
-                .subscribe((status) => { if (status === 'SUBSCRIBED') setRealtimeReady(true); });
-              return () => { try { setRealtimeReady(false); supa.removeChannel(channel); } catch {} };
-            }, [room, promptId]);
-
-            // 不再在切题时重置昵称；房间仅在首次进入时由 initialNeedNick 控制是否弹窗
-            async function send() {
-              if (!room || !myId || !input.trim()) return;
-              if (!nick.trim()) { showToast(lang==='en'? 'Please set a nickname' : '请先设置昵称'); return; }
-              const effectivePid = currentPrompt?.id || null;
-              if (!effectivePid) { showToast(lang==='en'? 'Please wait for the question to load' : '请等待题目加载完成'); return; }
-              const payload = { room_id: room, user_id: myId, nickname: nick || null, prompt_id: effectivePid, text: input.trim() };
-              const res = await fetch(`/api/chat/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
-              const data = await res.json();
-              if (!res.ok) {
-                showToast(data.error || '发送失败');
-                return;
-              }
-              // Realtime 已连接则等待服务端推送，避免本地乐观 + 远端重复
-              if (!realtimeReady) {
-                setItems((prev) => [...prev, { id: Math.random().toString(36), user_id: myId, nickname: nick || undefined, text: input.trim(), created_at: new Date().toISOString() }]);
-              }
-              lastSentAtRef.current = Date.now();
-              setInput("");
-              // 发送后做一次兜底刷新，确保双方一致（仅一次）
-              if (oneShotPollRef.current) { try { clearTimeout(oneShotPollRef.current); } catch {} }
-              oneShotPollRef.current = window.setTimeout(async () => {
-                try {
-                  const qs = new URLSearchParams({ room, limit: "50" });
-                  if (effectivePid) qs.set("prompt", String(effectivePid));
-                  const r = await fetch(`/api/chat/messages?${qs.toString()}`);
-                  const j = await r.json();
-                  if (Array.isArray(j.items)) {
-                    type ChatMsg = { id: string; user_id: string; nickname?: string; text: string; created_at: string };
-                    const fetched = j.items as Array<ChatMsg>;
-                    setItems((prev) => {
-                      const byId = new Map<string, ChatMsg>();
-                      for (const m of prev) byId.set(m.id, m);
-                      for (const m of fetched) byId.set(m.id, m);
-                      const merged = Array.from(byId.values());
-                      merged.sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-                      return merged;
-                    });
-                  }
-                } catch {}
-                finally { oneShotPollRef.current = null; }
-              }, 500);
-            }
-            // 停用定时轮询，仅在发送后 one-shot 兜底
-            useEffect(() => { return () => {}; }, []);
-            // 输入时 ping，防止超时结束
-            useEffect(() => {
-              if (!room) return;
-              if (!input) return;
-              const t = setTimeout(() => {
-                fetch('/api/chat/room/ping', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room_id: room }) });
-              }, 800);
-              return () => clearTimeout(t);
-            }, [room, input]);
-
-            // 轮询房间当前题目作为兜底（Realtime 失败时也能同步），每2秒对比不同则切换
-            useEffect(() => {
-              if (!room) return;
-              const t = setInterval(async () => {
-                try {
-                  const rr = await fetch(`/api/chat/room?room_id=${encodeURIComponent(room)}`);
-                  const rj = await rr.json();
-                  const pid: string | null = rj?.current_prompt_id ?? null;
-                  if (!pid) return;
-                  const collection: Array<{ id: string; type: PromptType; text: string }> =
-                    (remoteItems.length ? remoteItems.map(({id,type,text})=>({id,type,text})) : prompts.map(({id,type,text})=>({id,type,text})));
-                  if (currentPrompt?.id === pid) return;
-                  const hit = collection.find(x=>x.id===pid);
-                  if (hit) {
-                    const p: Prompt = { id: hit.id, text: hit.text, type: hit.type };
-                    setCurrentPrompt(p);
-                    setSeenPromptIds(new Set([p.id]));
-                  }
-                } catch {}
-              }, 2000);
-              return () => clearInterval(t);
-            }, [room, remoteItems, currentPrompt?.id, prompts]);
-            return (
-              <div className="fixed inset-x-0 bottom-4 flex justify-center pointer-events-none">
-                <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(168,85,247,.25)] p-3">
-                  {needNick && typeof window !== 'undefined' && createPortal(
-                    (
-                      <div className="fixed inset-0 z-[10000] flex items-center justify-center">
-                        <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
-                        <div className="relative z-10 w-[92%] max-w-sm rounded-xl bg-black/90 text-white p-5 border border-purple-500/60 shadow-[0_10px_40px_rgba(168,85,247,.35)]">
-                          <h3 className="text-lg font-semibold mb-2">{lang==='en'?'Set your nickname':'请输入昵称'}</h3>
-                          <p className="text-sm opacity-80 mb-4">{lang==='en'?'This will be shown to your partner in this room only.':'只用于当前房间展示，不会被保存。'}</p>
-                          <div className="flex items-center gap-2">
-                            <input autoFocus value={nick} onChange={(e)=>setNick(e.target.value)} placeholder={lang==='en'?'Nickname':'昵称'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-sm text-white placeholder:text-white/40" />
-                            <button onClick={()=>{ if(nick.trim()){ setNeedNick(false); try { sessionStorage.setItem(`chat_nick_set_${room}`,'1'); sessionStorage.setItem(`chat_nick_${room}`, nick.trim()); } catch {} } }} className="px-4 py-2 rounded-full bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50" disabled={!nick.trim()}>{lang==='en'?'Confirm':'确定'}</button>
-                          </div>
-                        </div>
-                      </div>
-                    ),
-                    document.body
-                  )}
-                  <div className="text-xs text-purple-200/80 mb-2 flex items-center justify-between">
-                    <span>{lang === 'en' ? 'Chat' : '聊天'} {room ? `#${room}` : ''}</span>
-                    {!room && <span className="opacity-70">{lang === 'en' ? 'Create a chat to start' : '创建房间后开始聊天'}</span>}
-                  </div>
-                  <div className="max-h-48 overflow-auto space-y-2 pr-1">
-                    {items.map((m, i) => (
-                      <div key={m.id + i} className={`text-sm ${m.user_id === myId ? 'text-purple-200' : 'text-white/90'}`}>
-                        <span className="opacity-70 mr-2">{m.nickname || (m.user_id === myId ? (lang==='en'?'Me':'我') : 'Guest')}：</span>
-                        <span>{m.text}</span>
-                      </div>
-                    ))}
-                    {loaded && items.length === 0 && (
-                      <div className="text-sm opacity-70">{lang==='en'?'No messages yet':'还没有消息'}</div>
-                    )}
-                  </div>
-                  <div className="mt-3 flex items-center gap-2">
-                    <input value={input} onChange={(e)=>setInput(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') send(); }} placeholder={lang==='en'?'Type a message':'输入消息'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-sm text-white placeholder:text-white/40" />
-                    <button onClick={send} disabled={!nick.trim() || !currentPrompt?.id} className="px-3 py-2 rounded bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50">{lang==='en'?'Send':'发送'}</button>
-                  </div>
-                </div>
-              </div>
-            );
-          }
-          return room ? <ChatBox /> : null;
-        })()}
+        {room ? (
+          <ChatBox
+            room={room}
+            lang={lang}
+            currentPrompt={currentPrompt}
+            setCurrentPrompt={setCurrentPrompt}
+            setSeenPromptIds={setSeenPromptIds}
+            remoteItems={(remoteItems.length ? remoteItems.map(({id,type,text})=>({id,type,text})) : [])}
+            prompts={prompts.map(({id,type,text})=>({id,type,text}))}
+            showToast={showToast}
+          />
+        ) : null}
       </div>
     </div>
   );

@@ -51,7 +51,9 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
 
   async function copyLinkInModal() {
     try {
-      const url = new URL(window.location.href).toString();
+      const u = new URL(window.location.href);
+      if (u.pathname === '/play/dating') u.pathname = '/play/deeptalk';
+      const url = u.toString();
       try {
         await navigator.clipboard.writeText(url);
         setCopiedInModal(true);
@@ -407,6 +409,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
     if (!res.ok) { showToast(data.error || '创建失败'); return; }
     const url = new URL(window.location.href);
     url.searchParams.set('room', data.id);
+    if (url.pathname === '/play/dating') url.pathname = '/play/deeptalk';
     window.history.replaceState(null, '', url.toString());
     setRoom(data.id);
     const copied = await copyTextToClipboard(url.toString());
@@ -447,6 +450,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
     const url = new URL(window.location.href);
     const hasRoom = !!url.searchParams.get('room');
     if (!hasRoom) { showToast(lang==='en'?'No room yet. Create first.':'尚未创建房间'); return; }
+    if (url.pathname === '/play/dating') url.pathname = '/play/deeptalk';
     const ok = await copyTextToClipboard(url.toString());
     showToast(ok ? (lang==='en'?'Link copied':'已复制链接') : (lang==='en'?'Copy failed':'复制失败'));
   }

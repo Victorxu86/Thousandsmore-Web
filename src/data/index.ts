@@ -10,7 +10,8 @@ export const categories: Record<CategoryId, Category> = {
 };
 
 export function getCategoryById(categoryId: string): Category | null {
-  const key = categoryId as CategoryId;
+  const alias = categoryId === "deeptalk" ? "dating" : categoryId;
+  const key = alias as CategoryId;
   return categories[key] ?? null;
 }
 

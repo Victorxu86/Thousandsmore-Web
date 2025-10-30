@@ -42,7 +42,7 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
   const [membersCount, setMembersCount] = useState<number>(0);
   const [fallbackPolling, setFallbackPolling] = useState<boolean>(false);
   const lastTsRef = useRef<number>(0);
-  const pollTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollTimerRef = useRef<number | null>(null);
 
   const clientRef = useRef<Awaited<ReturnType<typeof connectChat>> | null>(null);
   const me = useMemo(() => `u_${Math.random().toString(36).slice(2, 8)}`, []);
@@ -222,8 +222,10 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
   }
 
   function startPolling(codeVal: string) {
-    clearInterval(pollTimerRef.current);
-    pollTimerRef.current = setInterval(async () => {
+    if (pollTimerRef.current !== null) {
+      clearInterval(pollTimerRef.current);
+    }
+    pollTimerRef.current = window.setInterval(async () => {
       try {
         const res = await fetch(`/api/chat/poll?code=${encodeURIComponent(codeVal)}&since=${lastTsRef.current}`);
         const data = await res.json();
@@ -239,7 +241,7 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
           }
         }
       } catch {}
-    }, 1500);
+    }, 1500) as unknown as number;
   }
 
   async function send() {

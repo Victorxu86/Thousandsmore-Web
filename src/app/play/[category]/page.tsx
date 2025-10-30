@@ -39,6 +39,8 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
   const lastSentAtRef = useRef<number>(0);
   const oneShotPollRef = useRef<number | null>(null);
   const promptId = currentPrompt?.id || null;
+  const myCount = useMemo(() => items.filter((m) => m.user_id === myId).length, [items, myId]);
+  const isHost = useMemo(() => { try { return sessionStorage.getItem(`chat_created_by_me_${room}`) === '1'; } catch { return false; } }, [room]);
 
   useEffect(() => {
     if (!room) return;
@@ -92,6 +94,7 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
   async function send() {
     if (!room || !myId || !input.trim()) return;
     if (!nick.trim()) { showToast(lang==='en'? 'Please set a nickname' : '请先设置昵称'); return; }
+    if (myCount >= 5) { showToast(lang==='en'?'You have reached the 5-message limit for this question.':'本题你已达到 5 条上限'); return; }
     const effectivePid = currentPrompt?.id || null;
     if (!effectivePid) { showToast(lang==='en'? 'Please wait for the question to load' : '请等待题目加载完成'); return; }
     const payload = { room_id: room, user_id: myId, nickname: nick || null, prompt_id: effectivePid, text: input.trim() };
@@ -170,6 +173,9 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
               <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
               <div className="relative z-10 w-[92%] max-w-sm rounded-xl bg-black/90 text-white p-5 border border-purple-500/60 shadow-[0_10px_40px_rgba(168,85,247,.35)]">
                 <h3 className="text-lg font-semibold mb-2">{lang==='en'?'Set your nickname':'请输入昵称'}</h3>
+                {isHost && (
+                  <div className="mb-2 text-xs text-purple-200/90">{lang==='en'?'Link copied. Share with your friend.':'链接已复制，分享给好友。'}</div>
+                )}
                 <p className="text-sm opacity-80 mb-4">{lang==='en'?'This will be shown to your partner in this room only.':'只用于当前房间展示，不会被保存。'}</p>
                 <div className="flex items-center gap-2">
                   <input autoFocus value={nick} onChange={(e)=>setNick(e.target.value)} placeholder={lang==='en'?'Nickname':'昵称'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-sm text-white placeholder:text-white/40" />
@@ -195,9 +201,12 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
             <div className="text-sm opacity-70">{lang==='en'?'No messages yet':'还没有消息'}</div>
           )}
         </div>
-        <div className="mt-3 flex items-center gap-2">
+        <div className="mt-2 flex justify-end">
+          <span className="text-xs opacity-70">{myCount}/5</span>
+        </div>
+        <div className="mt-1 flex items-center gap-2">
           <input value={input} onChange={(e)=>setInput(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') send(); }} placeholder={lang==='en'?'Type a message':'输入消息'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-sm text-white placeholder:text-white/40" />
-          <button onClick={send} disabled={!nick.trim() || !currentPrompt?.id} className="px-3 py-2 rounded bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50">{lang==='en'?'Send':'发送'}</button>
+          <button onClick={send} disabled={!nick.trim() || !currentPrompt?.id || myCount>=5} className="px-3 py-2 rounded bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50">{lang==='en'?'Send':'发送'}</button>
         </div>
       </div>
     </div>
@@ -287,6 +296,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
     window.history.replaceState(null, '', url.toString());
     setRoom(data.id);
     try { await navigator.clipboard.writeText(url.toString()); showToast(lang==='en'?'Room created & link copied':'已创建并复制邀请链接'); } catch { showToast(lang==='en'?'Room created':'已创建'); }
+    try { sessionStorage.setItem(`chat_created_by_me_${data.id}`, '1'); } catch {}
     setShowCreateConfirm(false);
   }
   async function endRoom() {

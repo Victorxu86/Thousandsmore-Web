@@ -29,6 +29,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
   const [ageConfirmed, setAgeConfirmed] = useState<boolean>(false);
   const [room, setRoom] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
+  const [rtOk, setRtOk] = useState<boolean>(false);
   function showToast(msg: string) {
     setToast(msg);
     window.setTimeout(() => setToast(null), 1800);
@@ -308,7 +309,9 @@ export default function PlayCategoryPage({ params }: PageProps) {
           <button onClick={createRoom} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'Invite Friends':'邀请朋友'}</button>
           <button onClick={copyLink} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'Copy Link':'复制链接'}</button>
           <button onClick={endRoom} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'End':'结束房间'}</button>
-          {room && (<span className={`text-xs px-2 py-1 rounded-full ${theme.textAccent} border ${theme.borderAccent}`}>#{room}</span>)}
+          {room && (
+            <span className={`text-xs px-2 py-1 rounded-full ${theme.textAccent} border ${theme.borderAccent}`}>#{room}</span>
+          )}
           <span title={rtOk ? (lang==='en'?'Realtime OK':'Realtime 已启用') : (lang==='en'?'Realtime OFF':'Realtime 未启用')} className={`inline-block w-2 h-2 rounded-full ${rtOk ? 'bg-green-500' : 'bg-gray-500'} border border-white/20`} />
         </div>
       </div>
@@ -506,8 +509,8 @@ export default function PlayCategoryPage({ params }: PageProps) {
                     setSeenPromptIds(new Set([p.id]));
                   }
                 })
-                .subscribe((status) => { if (status === 'SUBSCRIBED') setRealtimeReady(true); });
-              return () => { try { setRealtimeReady(false); supa.removeChannel(channel); } catch {} };
+                .subscribe((status) => { if (status === 'SUBSCRIBED') { setRealtimeReady(true); setRtOk(true); } });
+              return () => { try { setRealtimeReady(false); setRtOk(false); supa.removeChannel(channel); } catch {} };
             }, [room, promptId]);
 
             // 不再在切题时重置昵称；房间仅在首次进入时由 initialNeedNick 控制是否弹窗

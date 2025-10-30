@@ -6,7 +6,6 @@ import { categories, getCategoryById, getPromptsByType } from "@/data";
 import { getRandomPrompt } from "@/data/prompts";
 import type { Prompt, PromptType } from "@/data/types";
 import { useLang } from "@/lib/lang";
-import ChatPanel from "./ChatPanel";
 
 type PageProps = {
   params: { category: string };
@@ -26,7 +25,6 @@ export default function PlayCategoryPage({ params }: PageProps) {
   const [hydrated, setHydrated] = useState(false);
   const [promptReady, setPromptReady] = useState(false);
   const [ageConfirmed, setAgeConfirmed] = useState<boolean>(false);
-  const [roomToken, setRoomToken] = useState<string | null>(null);
   const lang = useLang();
 
   const theme = useMemo(() => {
@@ -73,12 +71,6 @@ export default function PlayCategoryPage({ params }: PageProps) {
 
   // 首次渲染完成标记，避免 SSR/CSR 切换闪烁
   useEffect(() => {
-    // 从 URL 读取 roomToken（用于房主权限共享的直达链接）
-    try {
-      const usp = new URLSearchParams(window.location.search);
-      const rt = usp.get("roomToken");
-      if (rt) setRoomToken(rt);
-    } catch {}
     setHydrated(true);
   }, []);
 
@@ -113,7 +105,8 @@ export default function PlayCategoryPage({ params }: PageProps) {
     async function fetchItems() {
       if (!category) return;
       const q = new URLSearchParams({ category: category.id, lang });
-      if (roomToken) q.set("roomToken", roomToken);
+      const room = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '').get('room');
+      if (room) q.set('room', room);
       if (activeTopics.size > 0) q.set("topics", Array.from(activeTopics).join(","));
       const res = await fetch(`/api/prompts?${q.toString()}`);
       const data = await res.json();
@@ -122,7 +115,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
       setRemoteItems(items as Array<{ id: string; type: PromptType; text: string; topic?: string | null }>);
     }
     fetchItems();
-  }, [category, activeTopics, lang, roomToken]);
+  }, [category, activeTopics, lang]);
 
   useEffect(() => {
     async function fetchTopics() {
@@ -352,9 +345,78 @@ export default function PlayCategoryPage({ params }: PageProps) {
             {lang === "en" ? "Next" : "下一个"}
           </button>
         </div>
-
-        {/* 底部聊天面板（紫黑主题随分类） */}
-        <ChatPanel theme={theme} currentQuestionId={currentPrompt?.id || null} categoryId={category.id} onRoomToken={(t)=>setRoomToken(t)} />
+        {/* 底部聊天面板：黑+紫主题，固定中下区域 */}
+        {(() => {
+          const room = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('room') : null;
+          const [messages, setMessages] = [undefined as unknown as Array<{ id: string; user_id: string; nickname?: string; text: string; created_at: string }>, undefined as unknown as any];
+          // 简化：使用内联组件以减少文件改动
+          function ChatBox() {
+            const [loaded, setLoaded] = useState(false);
+            const [items, setItems] = useState<Array<{ id: string; user_id: string; nickname?: string; text: string; created_at: string }>>([]);
+            const [myId, setMyId] = useState<string>("");
+            const [nick, setNick] = useState<string>("");
+            const [input, setInput] = useState("");
+            const promptId = currentPrompt?.id || null;
+            useEffect(() => {
+              if (!room) return;
+              // 生成临时用户ID
+              let uid = "";
+              try { uid = sessionStorage.getItem("chat_uid") || ""; } catch {}
+              if (!uid) { uid = Math.random().toString(36).slice(2, 10); try { sessionStorage.setItem("chat_uid", uid); } catch {} }
+              setMyId(uid);
+              // 默认昵称
+              try { setNick(sessionStorage.getItem("chat_nick") || ""); } catch {}
+              // 载入最近消息
+              (async () => {
+                const qs = new URLSearchParams({ room, limit: "50" });
+                if (promptId) qs.set("prompt", promptId);
+                const res = await fetch(`/api/chat/messages?${qs.toString()}`);
+                const data = await res.json();
+                setItems(Array.isArray(data.items) ? data.items : []);
+                setLoaded(true);
+              })();
+            }, [room, currentPrompt?.id]);
+            async function send() {
+              if (!room || !myId || !input.trim()) return;
+              const payload = { room_id: room, user_id: myId, nickname: nick || null, prompt_id: promptId, text: input.trim() };
+              const res = await fetch(`/api/chat/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
+              const data = await res.json();
+              if (!res.ok) {
+                alert(data.error || '发送失败');
+                return;
+              }
+              setItems((prev) => [...prev, { id: Math.random().toString(36), user_id: myId, nickname: nick || undefined, text: input.trim(), created_at: new Date().toISOString() }]);
+              setInput("");
+            }
+            return (
+              <div className="fixed inset-x-0 bottom-4 flex justify-center pointer-events-none">
+                <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl border border-purple-500/60 bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(168,85,247,.25)] p-3">
+                  <div className="text-xs text-purple-200/80 mb-2 flex items-center justify-between">
+                    <span>{lang === 'en' ? 'Chat' : '聊天'} {room ? `#${room}` : ''}</span>
+                    {!room && <span className="opacity-70">{lang === 'en' ? 'Create a chat to start' : '创建房间后开始聊天'}</span>}
+                  </div>
+                  <div className="max-h-48 overflow-auto space-y-2 pr-1">
+                    {items.map((m, i) => (
+                      <div key={m.id + i} className={`text-sm ${m.user_id === myId ? 'text-purple-200' : 'text-white/90'}`}>
+                        <span className="opacity-70 mr-2">{m.nickname || (m.user_id === myId ? (lang==='en'?'Me':'我') : 'Guest')}</span>
+                        <span>{m.text}</span>
+                      </div>
+                    ))}
+                    {loaded && items.length === 0 && (
+                      <div className="text-sm opacity-70">{lang==='en'?'No messages yet':'还没有消息'}</div>
+                    )}
+                  </div>
+                  <div className="mt-3 flex items-center gap-2">
+                    <input value={nick} onChange={(e)=>{ setNick(e.target.value); try { sessionStorage.setItem('chat_nick', e.target.value); } catch {} }} placeholder={lang==='en'?'Nickname (optional)':'昵称（可选）'} className="w-36 px-2 py-1 rounded border border-purple-500/50 bg-black/50 text-sm text-white placeholder:text-white/40" />
+                    <input value={input} onChange={(e)=>setInput(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') send(); }} placeholder={lang==='en'?'Type a message':'输入消息'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-sm text-white placeholder:text-white/40" />
+                    <button onClick={send} className="px-3 py-2 rounded bg-purple-600 text-white text-sm hover:brightness-110">{lang==='en'?'Send':'发送'}</button>
+                  </div>
+                </div>
+              </div>
+            );
+          }
+          return <ChatBox />;
+        })()}
       </div>
     </div>
   );

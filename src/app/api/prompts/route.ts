@@ -3,7 +3,6 @@ import { getSupabaseServer } from "@/lib/supabaseServer";
 import { ENTITLEMENT_COOKIE, verifyEntitlement } from "@/lib/token";
 import { categories, getCategoryById } from "@/data";
 import { FREE_LIMIT_PER_CATEGORY } from "@/data/config";
-import crypto from "crypto";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -11,7 +10,7 @@ export async function GET(req: NextRequest) {
   const topicParam = searchParams.get("topics") || searchParams.get("topic");
   const topics = topicParam ? topicParam.split(",").map((s) => s.trim()).filter(Boolean) : [];
   const lang = (searchParams.get("lang") === "en" ? "en" : "zh");
-  const roomToken = searchParams.get("roomToken") || undefined;
+  const roomId = searchParams.get("room") || undefined;
   if (!categoryId || !getCategoryById(categoryId)) {
     return NextResponse.json({ error: "invalid category" }, { status: 400 });
   }
@@ -37,21 +36,21 @@ export async function GET(req: NextRequest) {
     }
   }
 
-  // 房间令牌覆盖（由房主授权，30 分钟有效）
-  if (roomToken) {
-    try {
-      const secret = process.env.CHAT_ROOM_SECRET || "";
-      const [bodyB64, sig] = roomToken.split(".");
-      if (secret && bodyB64 && sig) {
-        const expected = crypto.createHmac("sha256", secret).update(bodyB64).digest("base64url");
-        if (expected === sig) {
-          const payload = JSON.parse(Buffer.from(bodyB64, "base64url").toString("utf8")) as { code: string; category: string; pro: boolean; exp: number };
-          if (payload.exp > Date.now() && payload.category === categoryId) {
-            isPro = !!payload.pro;
-          }
-        }
-      }
-    } catch {}
+  // 房间继承：若提供 roomId，则按房主权益解锁（scope: all 或匹配分类）
+  if (!isPro && roomId) {
+    const supabaseAdmin = await getSupabaseServer();
+    const { data: roomData } = await supabaseAdmin.from("chat_rooms").select("owner_email").eq("id", roomId).limit(1);
+    const ownerEmail = roomData && roomData[0]?.owner_email;
+    if (ownerEmail) {
+      const { data } = await supabaseAdmin
+        .from("entitlements")
+        .select("unlocked,scope")
+        .eq("email", ownerEmail)
+        .in("scope", ["all", categoryId])
+        .order("scope")
+        .limit(1);
+      isPro = !!(data && data[0]?.unlocked);
+    }
   }
 
   // 从数据库读取，非 Pro 仅返回 trial 题目

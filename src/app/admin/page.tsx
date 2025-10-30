@@ -223,7 +223,7 @@ export default function AdminPage() {
               // 保存成功后刷新一次，确保与 Supabase 同步（含 >1000 的完整数据）
               await load();
               // 跳到最后一页便于检查新增
-              setPage(()=>{
+              setPage((p)=>{
                 const total = (items.length + parsed.length);
                 return Math.max(0, Math.floor((total - 1) / pageSize));
               });

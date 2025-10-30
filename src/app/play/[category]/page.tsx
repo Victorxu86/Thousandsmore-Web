@@ -452,6 +452,10 @@ export default function PlayCategoryPage({ params }: PageProps) {
             const [nick, setNick] = useState<string>(initialNick);
             const [needNick, setNeedNick] = useState<boolean>(initialNeedNick);
             const [input, setInput] = useState("");
+            const [realtimeReady, setRealtimeReady] = useState<boolean>(false);
+            const isTyping = input.trim().length > 0;
+            const lastSentAtRef = (typeof window !== 'undefined' ? (window as any) : {}) as { current?: number };
+            if (lastSentAtRef.current === undefined) (lastSentAtRef as any).current = 0;
             const promptId = currentPrompt?.id || null;
             useEffect(() => {
               if (!room) return;
@@ -461,7 +465,14 @@ export default function PlayCategoryPage({ params }: PageProps) {
               if (!uid) { uid = Math.random().toString(36).slice(2, 10); try { sessionStorage.setItem("chat_uid", uid); } catch {} }
               setMyId(uid);
               // 载入最近消息
-              (async () => { await reloadMessages(currentPrompt?.id || null); })();
+              (async () => {
+                const qs = new URLSearchParams({ room, limit: "50" });
+                if (promptId) qs.set("prompt", promptId);
+                const res = await fetch(`/api/chat/messages?${qs.toString()}`);
+                const data = await res.json();
+                setItems(Array.isArray(data.items) ? data.items : []);
+                setLoaded(true);
+              })();
               // 实时订阅
               const supa = getSupabaseBrowser();
               type ChatRow = { room_id: string; user_id: string; text: string; prompt_id?: string | null; nickname?: string | null; created_at: string };
@@ -492,18 +503,9 @@ export default function PlayCategoryPage({ params }: PageProps) {
                     setSeenPromptIds(new Set([p.id]));
                   }
                 })
-                .subscribe();
-              return () => { try { supa.removeChannel(channel); } catch {} };
+                .subscribe((status) => { if (status === 'SUBSCRIBED') setRealtimeReady(true); });
+              return () => { try { setRealtimeReady(false); supa.removeChannel(channel); } catch {} };
             }, [room, promptId]);
-
-            async function reloadMessages(pid: string | null) {
-              const qs = new URLSearchParams({ room: String(room), limit: "50" });
-              if (pid) qs.set("prompt", String(pid));
-              const res = await fetch(`/api/chat/messages?${qs.toString()}`);
-              const data = await res.json();
-              setItems(Array.isArray(data.items) ? data.items : []);
-              setLoaded(true);
-            }
 
             // 不再在切题时重置昵称；房间仅在首次进入时由 initialNeedNick 控制是否弹窗
             async function send() {
@@ -518,24 +520,39 @@ export default function PlayCategoryPage({ params }: PageProps) {
                 showToast(data.error || '发送失败');
                 return;
               }
-              // 乐观更新，立刻显示
-              setItems((prev) => [...prev, { id: Math.random().toString(36), user_id: myId, nickname: nick || undefined, text: input.trim(), created_at: new Date().toISOString() }]);
+              // Realtime 已连接则等待服务端推送，避免本地乐观 + 远端重复
+              if (!realtimeReady) {
+                setItems((prev) => [...prev, { id: Math.random().toString(36), user_id: myId, nickname: nick || undefined, text: input.trim(), created_at: new Date().toISOString() }]);
+              }
+              (lastSentAtRef as any).current = Date.now();
               setInput("");
-              // 发送后立即以同一题目过滤刷新，避免被覆盖
-              await reloadMessages(effectivePid);
             }
             // 轮询兜底（Realtime 未生效时也能看到对方）
             useEffect(() => {
               if (!room) return;
+              if (realtimeReady) return; // 有实时就不轮询
               const t = setInterval(async () => {
+                if (isTyping) return; // 正在输入不打扰
+                const last = (lastSentAtRef as any).current || 0;
+                if (Date.now() - last < 2000) return; // 发送后2秒内不刷新
                 const qs = new URLSearchParams({ room, limit: "50" });
                 if (promptId) qs.set("prompt", String(promptId));
                 const res = await fetch(`/api/chat/messages?${qs.toString()}`);
                 const data = await res.json();
-                if (Array.isArray(data.items)) setItems(data.items);
+                if (Array.isArray(data.items)) {
+                  const fetched = data.items as Array<{ id: string; user_id: string; nickname?: string; text: string; created_at: string }>;
+                  setItems((prev) => {
+                    const byId = new Map<string, any>();
+                    for (const m of prev) byId.set(m.id, m);
+                    for (const m of fetched) byId.set(m.id, m);
+                    const merged = Array.from(byId.values());
+                    merged.sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+                    return merged;
+                  });
+                }
               }, 4000);
               return () => clearInterval(t);
-            }, [room, promptId]);
+            }, [room, promptId, realtimeReady, isTyping]);
             // 输入时 ping，防止超时结束
             useEffect(() => {
               if (!room) return;

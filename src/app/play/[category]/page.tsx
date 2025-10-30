@@ -8,7 +8,7 @@ import { getRandomPrompt } from "@/data/prompts";
 import type { Prompt, PromptType } from "@/data/types";
 import { useLang, setLang } from "@/lib/lang";
 import { getSupabaseBrowser } from "@/lib/supabase";
-import type { RealtimePostgresInsertPayload, RealtimePostgresChangesPayload } from "@supabase/supabase-js";
+import type { RealtimePostgresInsertPayload, RealtimePostgresChangesPayload, RealtimeChannel } from "@supabase/supabase-js";
 
 type ChatBoxProps = {
   room: string;
@@ -41,6 +41,10 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
   const promptId = currentPrompt?.id || null;
   const myCount = useMemo(() => items.filter((m) => m.user_id === myId).length, [items, myId]);
   const [copiedInModal, setCopiedInModal] = useState<null | boolean>(null);
+  const [peerTyping, setPeerTyping] = useState<boolean>(false);
+  const typingHideRef = useRef<number | null>(null);
+  const lastTypingSentAtRef = useRef<number>(0);
+  const channelRef = useRef<RealtimeChannel | null>(null);
 
   async function copyLinkInModal() {
     try {
@@ -85,7 +89,7 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
     // 实时订阅
     const supa = getSupabaseBrowser();
     type ChatRow = { room_id: string; user_id: string; text: string; prompt_id?: string | null; nickname?: string | null; created_at: string };
-    const channel = supa.channel(`room:${room}`)
+    const channel = supa.channel(`room:${room}`, { config: { broadcast: { self: false } } })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `room_id=eq.${room}` }, (payload: RealtimePostgresInsertPayload<ChatRow>) => {
         const r = payload.new;
         if (promptId && r.prompt_id && r.prompt_id !== promptId) return;
@@ -111,9 +115,29 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
           setSeenPromptIds(new Set([p.id]));
         }
       })
+      .on('broadcast', { event: 'typing' }, (payload: { payload?: { user_id?: string; prompt_id?: string | null } }) => {
+        const fromUser = payload?.payload?.user_id || '';
+        const pid = payload?.payload?.prompt_id || null;
+        if (!fromUser || fromUser === myId) return;
+        if (promptId && pid && pid !== promptId) return;
+        setPeerTyping(true);
+        if (typingHideRef.current) { try { clearTimeout(typingHideRef.current); } catch {} }
+        typingHideRef.current = window.setTimeout(() => setPeerTyping(false), 2500);
+      })
       .subscribe((status) => { if (status === 'SUBSCRIBED') setRealtimeReady(true); });
+    channelRef.current = channel;
     return () => { try { setRealtimeReady(false); supa.removeChannel(channel); } catch {} };
   }, [room, promptId, lang, remoteItems, prompts, setCurrentPrompt, setSeenPromptIds]);
+
+  // 输入节流广播：对方正在输入
+  useEffect(() => {
+    if (!room) return;
+    const now = Date.now();
+    if (isTyping && now - lastTypingSentAtRef.current > 1200) {
+      lastTypingSentAtRef.current = now;
+      try { channelRef.current?.send({ type: 'broadcast', event: 'typing', payload: { user_id: myId, prompt_id: promptId || null } }); } catch {}
+    }
+  }, [isTyping, room, myId, promptId]);
 
   async function send() {
     if (!room || !myId || !input.trim()) return;
@@ -231,7 +255,10 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
             <div className="text-sm opacity-70">{lang==='en'?'No messages yet':'还没有消息'}</div>
           )}
         </div>
-        <div className="mt-2 flex justify-end">
+        <div className="mt-2 flex items-center justify-between">
+          <span className="text-xs opacity-70 h-4">
+            {peerTyping ? (lang==='en'?'Partner is typing...':'对方正在输入...') : ''}
+          </span>
           <span className="text-xs opacity-70">{myCount}/5</span>
         </div>
         <div className="mt-1 flex items-center gap-2">

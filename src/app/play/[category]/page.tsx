@@ -411,7 +411,24 @@ export default function PlayCategoryPage({ params }: PageProps) {
     setRoom(data.id);
     const copied = await copyTextToClipboard(url.toString());
     showToast(copied ? (lang==='en'?'Room created & link copied':'已创建并复制邀请链接') : (lang==='en'?'Room created':'已创建'));
+    try { sessionStorage.setItem(`chat_init_owner_${data.id}`, '1'); } catch {}
     setShowCreateConfirm(false);
+    // 选一题作为起始题并写入房间，确保双方同步从随机题开始
+    try {
+      const q = new URLSearchParams({ category: category.id, lang });
+      q.set('room', data.id);
+      const rr = await fetch(`/api/prompts?${q.toString()}`);
+      const rj = await rr.json();
+      const items = Array.isArray(rj.items) ? rj.items as Array<{id:string; type: PromptType; text: string}> : [];
+      if (items.length > 0) {
+        const picked = getRandomPrompt(items as unknown as Prompt[], undefined);
+        if (picked && picked.id) {
+          await fetch('/api/chat/room', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room_id: data.id, current_prompt_id: picked.id }) });
+          setCurrentPrompt({ id: picked.id, text: picked.text, type: picked.type });
+          setSeenPromptIds(new Set([picked.id]));
+        }
+      }
+    } catch {}
   }
   async function endRoom() {
     const room = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('room') : null;
@@ -497,11 +514,18 @@ export default function PlayCategoryPage({ params }: PageProps) {
               setSeenPromptIds(new Set([p.id]));
             }
           } else if (collection.length > 0) {
-            const first = collection[0];
-            const p: Prompt = { id: first.id, text: first.text, type: first.type };
-            setCurrentPrompt(p);
-            setSeenPromptIds(new Set([p.id]));
-            fetch('/api/chat/room', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room_id: room, current_prompt_id: first.id }) });
+            // 仅房主侧初始化随机首题，受邀方等待同步
+            let isOwner = false;
+            try { isOwner = sessionStorage.getItem(`chat_init_owner_${room}`) === '1'; } catch {}
+            if (isOwner) {
+              const picked = getRandomPrompt(collection as unknown as Prompt[], undefined);
+              if (picked) {
+                const p: Prompt = { id: picked.id, text: picked.text, type: picked.type };
+                setCurrentPrompt(p);
+                setSeenPromptIds(new Set([p.id]));
+                fetch('/api/chat/room', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room_id: room, current_prompt_id: picked.id }) });
+              }
+            }
           }
         } catch {}
       }

@@ -461,14 +461,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
               if (!uid) { uid = Math.random().toString(36).slice(2, 10); try { sessionStorage.setItem("chat_uid", uid); } catch {} }
               setMyId(uid);
               // 载入最近消息
-              (async () => {
-                const qs = new URLSearchParams({ room, limit: "50" });
-                if (promptId) qs.set("prompt", promptId);
-                const res = await fetch(`/api/chat/messages?${qs.toString()}`);
-                const data = await res.json();
-                setItems(Array.isArray(data.items) ? data.items : []);
-                setLoaded(true);
-              })();
+              (async () => { await reloadMessages(); })();
               // 实时订阅
               const supa = getSupabaseBrowser();
               type ChatRow = { room_id: string; user_id: string; text: string; prompt_id?: string | null; nickname?: string | null; created_at: string };
@@ -503,11 +496,19 @@ export default function PlayCategoryPage({ params }: PageProps) {
               return () => { try { supa.removeChannel(channel); } catch {} };
             }, [room, promptId]);
 
+            async function reloadMessages() {
+              const qs = new URLSearchParams({ room: String(room), limit: "50" });
+              if (promptId) qs.set("prompt", String(promptId));
+              const res = await fetch(`/api/chat/messages?${qs.toString()}`);
+              const data = await res.json();
+              setItems(Array.isArray(data.items) ? data.items : []);
+              setLoaded(true);
+            }
+
             // 不再在切题时重置昵称；房间仅在首次进入时由 initialNeedNick 控制是否弹窗
             async function send() {
               if (!room || !myId || !input.trim()) return;
               if (!nick.trim()) { showToast(lang==='en'? 'Please set a nickname' : '请先设置昵称'); return; }
-              if (!promptId) { showToast(lang==='en'? 'Please wait for the question to load' : '请等待题目加载完成'); return; }
               const payload = { room_id: room, user_id: myId, nickname: nick || null, prompt_id: promptId, text: input.trim() };
               const res = await fetch(`/api/chat/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
               const data = await res.json();
@@ -515,8 +516,9 @@ export default function PlayCategoryPage({ params }: PageProps) {
                 showToast(data.error || '发送失败');
                 return;
               }
-              setItems((prev) => [...prev, { id: Math.random().toString(36), user_id: myId, nickname: nick || undefined, text: input.trim(), created_at: new Date().toISOString() }]);
               setInput("");
+              // 发送后立即刷新，避免由于并发加载造成的“显示被覆盖/吞掉”
+              await reloadMessages();
             }
             // 轮询兜底（Realtime 未生效时也能看到对方）
             useEffect(() => {
@@ -594,7 +596,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
                   </div>
                   <div className="mt-3 flex items-center gap-2">
                     <input value={input} onChange={(e)=>setInput(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') send(); }} placeholder={lang==='en'?'Type a message':'输入消息'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-sm text-white placeholder:text-white/40" />
-                    <button onClick={send} disabled={!nick.trim() || !promptId} className="px-3 py-2 rounded bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50">{lang==='en'?'Send':'发送'}</button>
+                    <button onClick={send} disabled={!nick.trim()} className="px-3 py-2 rounded bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50">{lang==='en'?'Send':'发送'}</button>
                   </div>
                 </div>
               </div>

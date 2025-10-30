@@ -73,6 +73,12 @@ export default function PlayCategoryPage({ params }: PageProps) {
 
   // 首次渲染完成标记，避免 SSR/CSR 切换闪烁
   useEffect(() => {
+    // 从 URL 读取 roomToken（用于房主权限共享的直达链接）
+    try {
+      const usp = new URLSearchParams(window.location.search);
+      const rt = usp.get("roomToken");
+      if (rt) setRoomToken(rt);
+    } catch {}
     setHydrated(true);
   }, []);
 

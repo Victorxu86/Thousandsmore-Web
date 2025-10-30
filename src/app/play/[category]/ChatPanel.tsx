@@ -102,123 +102,34 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
     setShowInvite(true);
     setWaitingStatus("waiting");
     setInviteUntil(Date.now() + 30*60*1000);
-    // 邀请方立即连接并监听对方加入
-    setConnecting(true);
+    // 启用轮询直连：不依赖 WebSocket，直接开始轮询并标记连接
+    setFallbackPolling(true);
+    startPolling(c);
+    setConnected(true);
+    // 为来宾提供房主权限直达：把 roomToken 写进直达链接
     try {
-      const client = await connectChat(c, forcedTransport === "auto" ? undefined : forcedTransport);
-      clientRef.current = client;
-      try { await client.channel.presence.enter({ me }); } catch {}
-      try {
-        setConnState(client.ably.connection.state);
-        client.ably.connection.on((st) => setConnState(st.current));
-        const updateMembers = async () => {
-          try { const m = await client.channel.presence.get(); setMembersCount(m?.length||0); } catch {}
-        };
-        client.channel.presence.subscribe(["enter","leave","update"], updateMembers);
-        void updateMembers();
-      } catch {}
-      await client.channel.presence.subscribe("enter", (m) => {
-        if (m.clientId && m.clientId !== client.ably.auth.clientId) {
-          setWaitingStatus("joined");
-          // 2 秒后关闭弹窗
-          setTimeout(() => { setShowInvite(false); }, 2000);
-        }
-      });
-      setConnected(true);
-      // 订阅消息/typing（邀请方也要）
-      await client.channel.subscribe("msg", (m) => {
-        const data = m.data as { id: string; sender: string; text: string; ts: number; q?: string };
-        if (currentQuestionId && data.q && data.q !== currentQuestionId) return;
-        setMessages((prev) => [...prev, { id: data.id, sender: data.sender, text: data.text, ts: data.ts }]);
-      });
-      await client.channel.subscribe("typing", (m) => {
-        const data = m.data as { sender: string; typing: boolean };
-        if (data.sender === me) return;
-        setPeerTyping(!!data.typing);
-        if (data.typing) setTimeout(() => setPeerTyping(false), 3000);
-      });
-      // 请求房间令牌（按房主解锁状态）并广播给对方
-      try {
-        const res = await fetch(`/api/chat/room-token`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code: c, category: categoryId }) });
-        const data = await res.json();
-        if (res.ok && data.token) {
-          onRoomToken && onRoomToken(data.token);
-          await client.channel.publish("room_token", { token: data.token });
-        }
-      } catch {}
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setConnecting(false);
-    }
+      const res = await fetch(`/api/chat/room-token`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code: c, category: categoryId }) });
+      const data = await res.json();
+      if (res.ok && data.token) {
+        onRoomToken && onRoomToken(data.token);
+        try {
+          const url = new URL(directLink || window.location.href);
+          url.searchParams.set("roomToken", data.token);
+          setDirectLink(url.toString());
+        } catch {}
+      }
+    } catch {}
   }
 
   async function handleJoin(c?: string, silent?: boolean) {
     const joinCode = (c || code).trim();
     if (!joinCode) return;
-    setConnecting(true);
-    try {
-      const client = await connectChat(joinCode, forcedTransport === "auto" ? undefined : forcedTransport);
-      // 限制 2 人：进入 presence 前检查当前在线人数
-      try {
-        await client.channel.attach();
-        const members = await client.channel.presence.get();
-        if ((members?.length || 0) >= 2) {
-          await client.ably.close();
-          setJoinError("房间已满（最多 2 人）");
-          setShowJoin(true); // 显示错误
-          return;
-        }
-      } catch {}
-      clientRef.current = client;
-      // presence 加入
-      try { await client.channel.presence.enter({ me }); } catch {}
-      try {
-        setConnState(client.ably.connection.state);
-        client.ably.connection.on((st) => setConnState(st.current));
-        const updateMembers = async () => {
-          try { const m = await client.channel.presence.get(); setMembersCount(m?.length||0); } catch {}
-        };
-        client.channel.presence.subscribe(["enter","leave","update"], updateMembers);
-        void updateMembers();
-      } catch {}
-      // 订阅消息
-      await client.channel.subscribe("msg", (m) => {
-        const data = m.data as { id: string; sender: string; text: string; ts: number; q?: string };
-        // 题目隔离（仅显示当前题目的消息）
-        if (currentQuestionId && data.q && data.q !== currentQuestionId) return;
-        setMessages((prev) => [...prev, { id: data.id, sender: data.sender, text: data.text, ts: data.ts }]);
-      });
-      // typing 指示
-      await client.channel.subscribe("typing", (m) => {
-        const data = m.data as { sender: string; typing: boolean };
-        if (data.sender === me) return;
-        setPeerTyping(!!data.typing);
-        if (data.typing) {
-          setTimeout(() => setPeerTyping(false), 3000);
-        }
-      });
-      // 接收房间令牌（由房主下发）
-      await client.channel.subscribe("room_token", (m) => {
-        const data = m.data as { token?: string };
-        if (data?.token) {
-          onRoomToken && onRoomToken(data.token);
-        }
-      });
-      setConnected(true);
-      if (!silent) setShowJoin(false);
-    } catch (e) {
-      console.error(e);
-      const msg = e instanceof Error ? e.message : String(e);
-      setJoinError(msg === "timeout" ? "连接超时，请更换网络或浏览器再试" : msg === "failed" ? "连接失败，请检查网络限制（尝试4G/家宽）" : "加入失败，请稍后再试");
-      setShowJoin(true);
-      // 启用轮询后备方案
-      setFallbackPolling(true);
-      try { if (!silent) setShowJoin(false); } catch {}
-      startPolling(joinCode);
-    } finally {
-      setConnecting(false);
-    }
+    // 统一使用轮询直连，避免长连接限制
+    setConnecting(false);
+    setFallbackPolling(true);
+    startPolling(joinCode);
+    setConnected(true);
+    if (!silent) setShowJoin(false);
   }
 
   function startPolling(codeVal: string) {

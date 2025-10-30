@@ -460,8 +460,8 @@ export default function PlayCategoryPage({ params }: PageProps) {
             const [needNick, setNeedNick] = useState<boolean>(initialNeedNick);
             const [input, setInput] = useState("");
             const [realtimeReady, setRealtimeReady] = useState<boolean>(false);
-            const isTyping = input.trim().length > 0;
             const lastSentAtRef = useRef<number>(0);
+            const oneShotPollRef = useRef<number | null>(null);
             const promptId = currentPrompt?.id || null;
             const promptIdRef = useRef<string | null>(promptId);
             useEffect(() => { promptIdRef.current = currentPrompt?.id || null; }, [currentPrompt?.id]);
@@ -535,6 +535,29 @@ export default function PlayCategoryPage({ params }: PageProps) {
               }
               lastSentAtRef.current = Date.now();
               setInput("");
+              // 发送后0.5秒仅轮询一次兜底，确保双方都能看到最新消息
+              if (oneShotPollRef.current) { try { clearTimeout(oneShotPollRef.current); } catch {} }
+              oneShotPollRef.current = window.setTimeout(async () => {
+                try {
+                  const qs = new URLSearchParams({ room, limit: "50" });
+                  if (effectivePid) qs.set("prompt", String(effectivePid));
+                  const r = await fetch(`/api/chat/messages?${qs.toString()}`);
+                  const j = await r.json();
+                  if (Array.isArray(j.items)) {
+                    type ChatMsg = { id: string; user_id: string; nickname?: string; text: string; created_at: string };
+                    const fetched = j.items as Array<ChatMsg>;
+                    setItems((prev) => {
+                      const byId = new Map<string, ChatMsg>();
+                      for (const m of prev) byId.set(m.id, m);
+                      for (const m of fetched) byId.set(m.id, m);
+                      const merged = Array.from(byId.values());
+                      merged.sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+                      return merged;
+                    });
+                  }
+                } catch {}
+                finally { oneShotPollRef.current = null; }
+              }, 500);
             }
             // 轮询兜底（Realtime 未生效时也能看到对方）
             // 暂时停用消息轮询兜底，完全依赖 Realtime

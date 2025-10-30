@@ -485,7 +485,8 @@ export default function PlayCategoryPage({ params }: PageProps) {
               const channel = supa.channel(`room:${room}`)
                 .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `room_id=eq.${room}` }, (payload: RealtimePostgresInsertPayload<ChatRow>) => {
                   const r = payload.new;
-                  if (promptId && r.prompt_id && r.prompt_id !== promptId) return;
+                  const pidNow = promptIdRef.current;
+                  if (pidNow && r.prompt_id && r.prompt_id !== pidNow) return;
                   setItems((prev) => [...prev, { id: Math.random().toString(36), user_id: r.user_id, nickname: r.nickname || undefined, text: r.text, created_at: r.created_at }]);
                 })
                 .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_rooms', filter: `id=eq.${room}` }, async (payload: RealtimePostgresChangesPayload<{ current_prompt_id?: string|null }>) => {
@@ -511,7 +512,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
                 })
                 .subscribe((status) => { if (status === 'SUBSCRIBED') { setRealtimeReady(true); setRtOk(true); } });
               return () => { try { setRealtimeReady(false); setRtOk(false); supa.removeChannel(channel); } catch {} };
-            }, [room, promptId]);
+            }, [room]);
 
             // 不再在切题时重置昵称；房间仅在首次进入时由 initialNeedNick 控制是否弹窗
             async function send() {
@@ -534,32 +535,8 @@ export default function PlayCategoryPage({ params }: PageProps) {
               setInput("");
             }
             // 轮询兜底（Realtime 未生效时也能看到对方）
-            useEffect(() => {
-              if (!room) return;
-              if (realtimeReady) return; // 有实时就不轮询
-              const t = setInterval(async () => {
-                if (isTyping) return; // 正在输入不打扰
-                const last = lastSentAtRef.current || 0;
-                if (Date.now() - last < 2000) return; // 发送后2秒内不刷新
-                const qs = new URLSearchParams({ room, limit: "50" });
-                if (promptId) qs.set("prompt", String(promptId));
-                const res = await fetch(`/api/chat/messages?${qs.toString()}`);
-                const data = await res.json();
-                if (Array.isArray(data.items)) {
-                  type ChatMsg = { id: string; user_id: string; nickname?: string; text: string; created_at: string };
-                  const fetched = data.items as Array<ChatMsg>;
-                  setItems((prev) => {
-                    const byId = new Map<string, ChatMsg>();
-                    for (const m of prev) byId.set(m.id, m);
-                    for (const m of fetched) byId.set(m.id, m);
-                    const merged = Array.from(byId.values());
-                    merged.sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-                    return merged;
-                  });
-                }
-              }, 4000);
-              return () => clearInterval(t);
-            }, [promptId, realtimeReady, isTyping, lastSentAtRef]);
+            // 暂时停用消息轮询兜底，完全依赖 Realtime
+            useEffect(() => { return () => {}; }, []);
             // 输入时 ping，防止超时结束
             useEffect(() => {
               if (!room) return;

@@ -35,7 +35,7 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
   const [joinError, setJoinError] = useState<string>("");
   const [inviteUntil, setInviteUntil] = useState<number>(0);
   const [nowMs, setNowMs] = useState<number>(Date.now());
-  const [roomToken, setRoomToken] = useState<string | null>(null);
+  // roomToken 仅通过 onRoomToken 向父组件传递，不在本组件内持久化，避免未使用警告
   const [forcedTransport, setForcedTransport] = useState<"auto"|"xhr_polling"|"web_socket">("auto");
   const [debug, setDebug] = useState<boolean>(false);
   const [connState, setConnState] = useState<string>("idle");
@@ -142,7 +142,6 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
         const res = await fetch(`/api/chat/room-token`, { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ code: c, category: categoryId }) });
         const data = await res.json();
         if (res.ok && data.token) {
-          setRoomToken(data.token);
           onRoomToken && onRoomToken(data.token);
           await client.channel.publish("room_token", { token: data.token });
         }
@@ -203,7 +202,6 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
       await client.channel.subscribe("room_token", (m) => {
         const data = m.data as { token?: string };
         if (data?.token) {
-          setRoomToken(data.token);
           onRoomToken && onRoomToken(data.token);
         }
       });
@@ -294,7 +292,6 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
             setTyping(false);
             setPeerTyping(false);
             setWaitingStatus("idle");
-            setRoomToken(null);
             onRoomToken && onRoomToken(null);
           }} className={`px-3 py-2 rounded-full border text-sm ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent}`}>退出并清空</button>
         )}

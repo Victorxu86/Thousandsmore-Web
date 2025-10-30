@@ -5,7 +5,7 @@ import Link from "next/link";
 import { categories, getCategoryById, getPromptsByType } from "@/data";
 import { getRandomPrompt } from "@/data/prompts";
 import type { Prompt, PromptType } from "@/data/types";
-import { useLang } from "@/lib/lang";
+import { useLang, setLang } from "@/lib/lang";
 import { getSupabaseBrowser } from "@/lib/supabase";
 import type { RealtimePostgresInsertPayload, RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 
@@ -79,7 +79,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
   // 房间辅助：创建/结束/复制链接
   async function createRoom() {
     if (!category) return;
-    const res = await fetch(`/api/chat/room`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ category_id: category.id }) });
+    const res = await fetch(`/api/chat/room`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ category_id: category.id, lang }) });
     const data = await res.json();
     if (!res.ok) { showToast(data.error || '创建失败'); return; }
     const url = new URL(window.location.href);

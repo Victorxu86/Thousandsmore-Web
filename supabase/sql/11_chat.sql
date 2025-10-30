@@ -29,5 +29,6 @@ alter table public.chat_messages disable row level security;
 alter table public.chat_rooms add column if not exists last_active_at timestamptz default now();
 alter table public.chat_rooms add column if not exists ended_at timestamptz;
 alter table public.chat_rooms add column if not exists current_prompt_id text;
+alter table public.chat_rooms add column if not exists room_lang text check (room_lang in ('zh','en')) default 'en';
 
 

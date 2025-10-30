@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const supabase = await getSupabaseServer();
   const { data, error } = await supabase
     .from("chat_rooms")
-    .select("id, category_id, owner_email, current_prompt_id, ended_at, last_active_at")
+    .select("id, category_id, owner_email, current_prompt_id, ended_at, last_active_at, room_lang")
     .eq("id", roomId)
     .limit(1);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -25,6 +25,7 @@ export async function POST(req: NextRequest) {
     const categoryId = (body?.category_id as string) || "dating";
     const roomId = (body?.room_id as string) || Math.random().toString(36).slice(2, 8);
     const joinToken = Math.random().toString(36).slice(2, 10);
+    const roomLang = (body?.lang === 'zh' ? 'zh' : 'en');
 
     // 识别房主是否有权益（email from auth user 或签名 Cookie）
     const { data: userData } = await supabase.auth.getUser();
@@ -38,6 +39,7 @@ export async function POST(req: NextRequest) {
       category_id: categoryId,
       owner_email: ownerEmail,
       join_token: joinToken,
+      room_lang: roomLang,
     });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ id: roomId, joinToken });

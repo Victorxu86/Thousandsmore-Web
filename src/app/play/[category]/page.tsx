@@ -548,7 +548,6 @@ export default function PlayCategoryPage({ params }: PageProps) {
                     )}
                   </div>
                   <div className="mt-3 flex items-center gap-2">
-                    <input value={nick} onChange={(e)=> setNick(e.target.value)} placeholder={lang==='en'?'Nickname':'昵称'} className="w-36 px-2 py-1 rounded border border-purple-500/50 bg-black/50 text-sm text-white placeholder:text-white/40" />
                     <input value={input} onChange={(e)=>setInput(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') send(); }} placeholder={lang==='en'?'Type a message':'输入消息'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-sm text-white placeholder:text-white/40" />
                     <button onClick={send} disabled={!nick.trim()} className="px-3 py-2 rounded bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50">{lang==='en'?'Send':'发送'}</button>
                   </div>

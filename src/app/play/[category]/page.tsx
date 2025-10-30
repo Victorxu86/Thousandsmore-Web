@@ -436,8 +436,21 @@ export default function PlayCategoryPage({ params }: PageProps) {
             const [loaded, setLoaded] = useState(false);
             const [items, setItems] = useState<Array<{ id: string; user_id: string; nickname?: string; text: string; created_at: string }>>([]);
             const [myId, setMyId] = useState<string>("");
-            const [nick, setNick] = useState<string>("");
-            const [needNick, setNeedNick] = useState<boolean>(true);
+            const roomParam = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('room') : null;
+            const initialNick = (() => {
+              try {
+                const r = roomParam; if (!r) return "";
+                return sessionStorage.getItem(`chat_nick_${r}`) || "";
+              } catch { return ""; }
+            })();
+            const initialNeedNick = (() => {
+              try {
+                const r = roomParam; if (!r) return true;
+                return sessionStorage.getItem(`chat_nick_set_${r}`) === '1' ? false : true;
+              } catch { return true; }
+            })();
+            const [nick, setNick] = useState<string>(initialNick);
+            const [needNick, setNeedNick] = useState<boolean>(initialNeedNick);
             const [input, setInput] = useState("");
             const promptId = currentPrompt?.id || null;
             useEffect(() => {
@@ -490,18 +503,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
               return () => { try { supa.removeChannel(channel); } catch {} };
             }, [room, promptId]);
 
-            // 房间变化时，仅出现一次昵称弹窗；切题不会触发
-            useEffect(() => {
-              if (!room) return;
-              let already = false;
-              try { already = sessionStorage.getItem(`chat_nick_set_${room}`) === '1'; } catch {}
-              if (already) {
-                setNeedNick(false);
-              } else {
-                setNick("");
-                setNeedNick(true);
-              }
-            }, [room]);
+            // 不再在切题时重置昵称；房间仅在首次进入时由 initialNeedNick 控制是否弹窗
             async function send() {
               if (!room || !myId || !input.trim()) return;
               if (!nick.trim()) { showToast(lang==='en'? 'Please set a nickname' : '请先设置昵称'); return; }
@@ -569,7 +571,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
                         <p className="text-sm opacity-80 mb-3">{lang==='en'?'This will be shown to your partner in this room only.':'只用于当前房间展示，不会被保存。'}</p>
                         <div className="flex items-center gap-2">
                           <input autoFocus value={nick} onChange={(e)=>setNick(e.target.value)} placeholder={lang==='en'?'Nickname':'昵称'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-sm text-white placeholder:text-white/40" />
-                          <button onClick={()=>{ if(nick.trim()){ setNeedNick(false); try { sessionStorage.setItem(`chat_nick_set_${room}`,'1'); } catch {} } }} className="px-3 py-2 rounded bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50" disabled={!nick.trim()}>{lang==='en'?'Confirm':'确定'}</button>
+                          <button onClick={()=>{ if(nick.trim()){ setNeedNick(false); try { sessionStorage.setItem(`chat_nick_set_${room}`,'1'); sessionStorage.setItem(`chat_nick_${room}`, nick.trim()); } catch {} } }} className="px-3 py-2 rounded bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50" disabled={!nick.trim()}>{lang==='en'?'Confirm':'确定'}</button>
                         </div>
                       </div>
                     </div>

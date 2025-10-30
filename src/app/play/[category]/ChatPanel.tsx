@@ -36,6 +36,10 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
   const [inviteUntil, setInviteUntil] = useState<number>(0);
   const [nowMs, setNowMs] = useState<number>(Date.now());
   const [roomToken, setRoomToken] = useState<string | null>(null);
+  const [forcedTransport, setForcedTransport] = useState<"auto"|"xhr_polling"|"web_socket">("auto");
+  const [debug, setDebug] = useState<boolean>(false);
+  const [connState, setConnState] = useState<string>("idle");
+  const [membersCount, setMembersCount] = useState<number>(0);
 
   const clientRef = useRef<Awaited<ReturnType<typeof connectChat>> | null>(null);
   const me = useMemo(() => `u_${Math.random().toString(36).slice(2, 8)}`, []);
@@ -57,6 +61,10 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
     try {
       const usp = new URLSearchParams(window.location.search);
       const auto = (usp.get("code") || "").toUpperCase();
+      const ft = (usp.get("transport") || "").toLowerCase();
+      const dbg = usp.get("debug") === "1";
+      if (ft === "xhr_polling" || ft === "web_socket") setForcedTransport(ft as any);
+      if (dbg) setDebug(true);
       if (auto && !connected && !connecting) {
         setCode(auto);
         setShowJoin(false);
@@ -93,9 +101,18 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
     // 邀请方立即连接并监听对方加入
     setConnecting(true);
     try {
-      const client = await connectChat(c);
+      const client = await connectChat(c, forcedTransport === "auto" ? undefined : forcedTransport);
       clientRef.current = client;
       try { await client.channel.presence.enter({ me }); } catch {}
+      try {
+        setConnState(client.ably.connection.state);
+        client.ably.connection.on((st) => setConnState(st.current));
+        const updateMembers = async () => {
+          try { const m = await client.channel.presence.get(); setMembersCount(m?.length||0); } catch {}
+        };
+        client.channel.presence.subscribe(["enter","leave","update"], updateMembers);
+        void updateMembers();
+      } catch {}
       await client.channel.presence.subscribe("enter", (m) => {
         if (m.clientId && m.clientId !== client.ably.auth.clientId) {
           setWaitingStatus("joined");
@@ -138,7 +155,7 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
     if (!joinCode) return;
     setConnecting(true);
     try {
-      const client = await connectChat(joinCode);
+      const client = await connectChat(joinCode, forcedTransport === "auto" ? undefined : forcedTransport);
       // 限制 2 人：进入 presence 前检查当前在线人数
       try {
         await client.channel.attach();
@@ -153,6 +170,15 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
       clientRef.current = client;
       // presence 加入
       try { await client.channel.presence.enter({ me }); } catch {}
+      try {
+        setConnState(client.ably.connection.state);
+        client.ably.connection.on((st) => setConnState(st.current));
+        const updateMembers = async () => {
+          try { const m = await client.channel.presence.get(); setMembersCount(m?.length||0); } catch {}
+        };
+        client.channel.presence.subscribe(["enter","leave","update"], updateMembers);
+        void updateMembers();
+      } catch {}
       // 订阅消息
       await client.channel.subscribe("msg", (m) => {
         const data = m.data as { id: string; sender: string; text: string; ts: number; q?: string };
@@ -260,6 +286,9 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
       {/* 聊天面板 */}
       {connected && (
         <div className={`mt-4 rounded-lg border ${theme.borderAccent} bg-black/30 p-3`}> 
+          {debug && (
+            <div className="mb-2 text-xs opacity-70">连接状态: {connState} · 在线: {membersCount} · 传输: {forcedTransport}</div>
+          )}
           <div className="h-48 overflow-y-auto space-y-2 pr-1">
             {messages.map((m)=> (
               <div key={m.id} className={`text-sm ${m.sender===me?"text-right":"text-left"}`}>

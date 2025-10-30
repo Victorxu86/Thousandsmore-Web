@@ -9,7 +9,7 @@ export type ChatClient = {
   disconnect: () => Promise<void>;
 };
 
-export async function connectChat(code: string): Promise<ChatClient> {
+export async function connectChat(code: string, forcedTransport?: "xhr_polling" | "web_socket" | "auto"): Promise<ChatClient> {
   const authUrl = `/api/chat/token?code=${encodeURIComponent(code)}`;
 
   async function connectWith(options: Ably.Types.ClientOptions, timeoutMs: number): Promise<Ably.Realtime> {
@@ -28,12 +28,19 @@ export async function connectChat(code: string): Promise<ChatClient> {
     return client;
   }
 
-  // 优先使用 xhr_polling（兼容性最高），失败再回退到综合方案
+  // 选择传输策略
   let ably: Ably.Realtime;
-  try {
-    ably = await connectWith({ authUrl, transports: ["xhr_polling"], tls: true }, 8000);
-  } catch (e1) {
-    ably = await connectWith({ authUrl, transports: ["web_socket", "xhr_streaming", "xhr_polling"], tls: true }, 12000);
+  if (forcedTransport === "web_socket") {
+    ably = await connectWith({ authUrl, transports: ["web_socket"], tls: true }, 8000);
+  } else if (forcedTransport === "xhr_polling") {
+    ably = await connectWith({ authUrl, transports: ["xhr_polling"], tls: true }, 10000);
+  } else {
+    // auto：先 polling 再综合
+    try {
+      ably = await connectWith({ authUrl, transports: ["xhr_polling"], tls: true }, 8000);
+    } catch (e1) {
+      ably = await connectWith({ authUrl, transports: ["web_socket", "xhr_streaming", "xhr_polling"], tls: true }, 12000);
+    }
   }
 
   // 取回频道名

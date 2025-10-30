@@ -463,6 +463,8 @@ export default function PlayCategoryPage({ params }: PageProps) {
             const isTyping = input.trim().length > 0;
             const lastSentAtRef = useRef<number>(0);
             const promptId = currentPrompt?.id || null;
+            const promptIdRef = useRef<string | null>(promptId);
+            useEffect(() => { promptIdRef.current = currentPrompt?.id || null; }, [currentPrompt?.id]);
             useEffect(() => {
               if (!room) return;
               // 生成临时用户ID
@@ -547,35 +549,15 @@ export default function PlayCategoryPage({ params }: PageProps) {
               return () => clearTimeout(t);
             }, [room, input]);
 
-            // 轮询房间当前题目作为兜底（Realtime 失败时也能同步），每2秒对比不同则切换
-            useEffect(() => {
-              if (!room) return;
-              const t = setInterval(async () => {
-                try {
-                  const rr = await fetch(`/api/chat/room?room_id=${encodeURIComponent(room)}`);
-                  const rj = await rr.json();
-                  const pid: string | null = rj?.current_prompt_id ?? null;
-                  if (!pid) return;
-                  const collection: Array<{ id: string; type: PromptType; text: string }> =
-                    (remoteItems.length ? remoteItems.map(({id,type,text})=>({id,type,text})) : prompts.map(({id,type,text})=>({id,type,text})));
-                  if (currentPrompt?.id === pid) return;
-                  const hit = collection.find(x=>x.id===pid);
-                  if (hit) {
-                    const p: Prompt = { id: hit.id, text: hit.text, type: hit.type };
-                    setCurrentPrompt(p);
-                    setSeenPromptIds(new Set([p.id]));
-                  }
-                } catch {}
-              }, 2000);
-              return () => clearInterval(t);
-            }, [room, remoteItems, currentPrompt?.id, prompts]);
+            // 停用题目同步轮询（完全依赖 Realtime）
+            useEffect(() => { return () => {}; }, []);
             return (
               <div className="fixed inset-x-0 bottom-8 flex justify-center pointer-events-none">
                 <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(168,85,247,.25)] p-3">
                   {needNick && (
                     <>
-                      <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md" />
-                      <div className="fixed inset-0 z-50 flex items-center justify-center">
+                      <div className="fixed inset-0 z-[10000] bg-black/60 backdrop-blur-md" />
+                      <div className="fixed inset-0 z-[10001] flex items-center justify-center">
                         <div className="w-[92%] max-w-sm rounded-xl border border-purple-500/60 bg-black/90 text-white p-5 shadow-[0_10px_40px_rgba(168,85,247,.35)]">
                           <h2 className="text-lg font-semibold mb-2">{lang==='en'?'Set your nickname':'请输入昵称'}</h2>
                           <p className="text-sm opacity-80 mb-1">{lang==='en'?'This will be shown to your partner in this room only.':'只用于当前房间展示，不会被保存。'}</p>

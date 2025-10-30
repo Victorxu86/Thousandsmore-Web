@@ -7,7 +7,7 @@ import { getRandomPrompt } from "@/data/prompts";
 import type { Prompt, PromptType } from "@/data/types";
 import { useLang } from "@/lib/lang";
 import { getSupabaseBrowser } from "@/lib/supabase";
-import type { RealtimePostgresInsertPayload } from "@supabase/supabase-js";
+import type { RealtimePostgresInsertPayload, RealtimePostgresChangesPayload } from "@supabase/supabase-js";
 
 type PageProps = {
   params: { category: string };
@@ -156,6 +156,20 @@ export default function PlayCategoryPage({ params }: PageProps) {
       // 切题视为活跃：ping 房间，防止10分钟自动结束
       if (room) {
         fetch('/api/chat/room/ping', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room_id: room }) });
+        // 若房间存在，拉取当前房间选中题目
+        try {
+          const rr = await fetch(`/api/chat/room?room_id=${encodeURIComponent(room)}`);
+          const rj = await rr.json();
+          const pid = rj?.current_prompt_id as string | undefined;
+          if (pid) {
+            const match = (items as Array<{id:string; type: PromptType; text:string; topic?:string|null}>).find(x=>x.id===pid);
+            if (match) {
+              const p: Prompt = { id: match.id, text: match.text, type: match.type };
+              setCurrentPrompt(p);
+              setSeenPromptIds(new Set([p.id]));
+            }
+          }
+        } catch {}
       }
     }
     fetchItems();
@@ -219,6 +233,10 @@ export default function PlayCategoryPage({ params }: PageProps) {
       newSeen.add(next.id);
       setSeenPromptIds(newSeen);
       setCurrentPrompt(next);
+      // 同步到房间
+      if (room) {
+        fetch('/api/chat/room', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room_id: room, current_prompt_id: next.id }) });
+      }
     }
   }
 
@@ -438,6 +456,16 @@ export default function PlayCategoryPage({ params }: PageProps) {
                   const r = payload.new;
                   if (promptId && r.prompt_id && r.prompt_id !== promptId) return;
                   setItems((prev) => [...prev, { id: Math.random().toString(36), user_id: r.user_id, nickname: r.nickname || undefined, text: r.text, created_at: r.created_at }]);
+                })
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_rooms', filter: `id=eq.${room}` }, (payload: RealtimePostgresChangesPayload<{ current_prompt_id: string|null }>) => {
+                  const pid = payload.new?.current_prompt_id;
+                  if (!pid) return;
+                  const match = (remoteItems.length?remoteItems:prompts).find(x=>x.id===pid) as any;
+                  if (match) {
+                    const p: Prompt = { id: match.id, text: match.text, type: match.type };
+                    setCurrentPrompt(p);
+                    setSeenPromptIds(new Set([p.id]));
+                  }
                 })
                 .subscribe();
               return () => { try { supa.removeChannel(channel); } catch {} };

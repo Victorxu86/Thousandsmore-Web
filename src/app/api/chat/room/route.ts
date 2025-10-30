@@ -2,6 +2,22 @@ import { NextRequest, NextResponse } from "next/server";
 import { getSupabaseServer } from "@/lib/supabaseServer";
 import { ENTITLEMENT_COOKIE, verifyEntitlement } from "@/lib/token";
 
+export async function GET(req: NextRequest) {
+  const { searchParams } = new URL(req.url);
+  const roomId = searchParams.get("room_id");
+  if (!roomId) return NextResponse.json({ error: "missing room" }, { status: 400 });
+  const supabase = await getSupabaseServer();
+  const { data, error } = await supabase
+    .from("chat_rooms")
+    .select("id, category_id, owner_email, current_prompt_id, ended_at, last_active_at")
+    .eq("id", roomId)
+    .limit(1);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  const room = data && data[0];
+  if (!room) return NextResponse.json({ error: "not found" }, { status: 404 });
+  return NextResponse.json(room);
+}
+
 export async function POST(req: NextRequest) {
   try {
     const supabase = await getSupabaseServer();
@@ -38,6 +54,14 @@ export async function PATCH(req: NextRequest) {
     const body = await req.json();
     const roomId = String(body?.room_id || "");
     if (!roomId) return NextResponse.json({ error: "missing room" }, { status: 400 });
+    if (body?.current_prompt_id) {
+      const { error } = await supabase
+        .from("chat_rooms")
+        .update({ current_prompt_id: String(body.current_prompt_id), last_active_at: new Date().toISOString() })
+        .eq("id", roomId);
+      if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+      return NextResponse.json({ ok: true });
+    }
     const { error } = await supabase.from("chat_rooms").update({ ended_at: new Date().toISOString() }).eq("id", roomId);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json({ ok: true });

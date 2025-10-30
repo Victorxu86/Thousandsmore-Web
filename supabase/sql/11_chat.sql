@@ -28,5 +28,6 @@ alter table public.chat_messages disable row level security;
 -- 增量列：最近活跃与结束时间（幂等）
 alter table public.chat_rooms add column if not exists last_active_at timestamptz default now();
 alter table public.chat_rooms add column if not exists ended_at timestamptz;
+alter table public.chat_rooms add column if not exists current_prompt_id text;
 
 

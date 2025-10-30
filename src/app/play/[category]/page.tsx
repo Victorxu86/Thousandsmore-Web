@@ -6,6 +6,7 @@ import { categories, getCategoryById, getPromptsByType } from "@/data";
 import { getRandomPrompt } from "@/data/prompts";
 import type { Prompt, PromptType } from "@/data/types";
 import { useLang } from "@/lib/lang";
+import { getSupabaseBrowser } from "@/lib/supabase";
 
 type PageProps = {
   params: { category: string };
@@ -68,6 +69,32 @@ export default function PlayCategoryPage({ params }: PageProps) {
       selectedPill: "bg-purple-600 text-white border-purple-600",
     } as const;
   }, [category]);
+  // 房间辅助：创建/结束/复制链接
+  async function createRoom() {
+    if (!category) return;
+    const res = await fetch(`/api/chat/room`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ category_id: category.id }) });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || '创建失败'); return; }
+    const url = new URL(window.location.href);
+    url.searchParams.set('room', data.id);
+    window.history.replaceState(null, '', url.toString());
+    try { await navigator.clipboard.writeText(url.toString()); alert(lang==='en'?'Room created & link copied':'已创建并复制邀请链接'); } catch { alert(lang==='en'?'Room created':'已创建'); }
+  }
+  async function endRoom() {
+    const room = typeof window !== 'undefined' ? new URLSearchParams(window.location.search).get('room') : null;
+    if (!room) return;
+    const res = await fetch(`/api/chat/room`, { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room_id: room }) });
+    const data = await res.json();
+    if (!res.ok) { alert(data.error || '结束失败'); return; }
+    alert(lang==='en'?'Room ended':'房间已结束');
+  }
+  function copyLink() {
+    const url = new URL(window.location.href);
+    const hasRoom = !!url.searchParams.get('room');
+    if (!hasRoom) { alert(lang==='en'?'No room yet. Create first.':'尚未创建房间'); return; }
+    navigator.clipboard.writeText(url.toString());
+    alert(lang==='en'?'Link copied':'已复制链接');
+  }
 
   // 首次渲染完成标记，避免 SSR/CSR 切换闪烁
   useEffect(() => {
@@ -113,6 +140,10 @@ export default function PlayCategoryPage({ params }: PageProps) {
       setIsPro(!!data.isPro);
       const items = Array.isArray(data.items) ? data.items : [];
       setRemoteItems(items as Array<{ id: string; type: PromptType; text: string; topic?: string | null }>);
+      // 切题视为活跃：ping 房间，防止10分钟自动结束
+      if (room) {
+        fetch('/api/chat/room/ping', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room_id: room }) });
+      }
     }
     fetchItems();
   }, [category, activeTopics, lang]);
@@ -231,6 +262,11 @@ export default function PlayCategoryPage({ params }: PageProps) {
             })()}
           </div>
         )}
+        <div className="ml-3 flex items-center gap-2">
+          <button onClick={createRoom} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'Start Chat':'开始聊天'}</button>
+          <button onClick={copyLink} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'Copy Link':'复制链接'}</button>
+          <button onClick={endRoom} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'End':'结束房间'}</button>
+        </div>
       </div>
 
       <div className="w-full max-w-2xl text-center mt-10">
@@ -375,6 +411,16 @@ export default function PlayCategoryPage({ params }: PageProps) {
                 setItems(Array.isArray(data.items) ? data.items : []);
                 setLoaded(true);
               })();
+              // 实时订阅
+              const supa = getSupabaseBrowser();
+              const channel = supa.channel(`room:${room}`)
+                .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `room_id=eq.${room}` }, (payload: any) => {
+                  const r = payload.new as { room_id: string; user_id: string; text: string; prompt_id?: string; nickname?: string; created_at: string };
+                  if (promptId && r.prompt_id && r.prompt_id !== promptId) return;
+                  setItems((prev) => [...prev, { id: Math.random().toString(36), user_id: r.user_id, nickname: r.nickname, text: r.text, created_at: r.created_at }]);
+                })
+                .subscribe();
+              return () => { try { supa.removeChannel(channel); } catch {} };
             }, [room, currentPrompt?.id]);
             async function send() {
               if (!room || !myId || !input.trim()) return;
@@ -388,6 +434,15 @@ export default function PlayCategoryPage({ params }: PageProps) {
               setItems((prev) => [...prev, { id: Math.random().toString(36), user_id: myId, nickname: nick || undefined, text: input.trim(), created_at: new Date().toISOString() }]);
               setInput("");
             }
+            // 输入时 ping，防止超时结束
+            useEffect(() => {
+              if (!room) return;
+              if (!input) return;
+              const t = setTimeout(() => {
+                fetch('/api/chat/room/ping', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room_id: room }) });
+              }, 800);
+              return () => clearTimeout(t);
+            }, [room, input]);
             return (
               <div className="fixed inset-x-0 bottom-4 flex justify-center pointer-events-none">
                 <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl border border-purple-500/60 bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(168,85,247,.25)] p-3">

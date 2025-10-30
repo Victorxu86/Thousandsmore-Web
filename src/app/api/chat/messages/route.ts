@@ -26,6 +26,25 @@ export async function POST(req: NextRequest) {
     const text = String(body?.text || "").trim();
     if (!roomId || !userId || !text) return NextResponse.json({ error: "missing fields" }, { status: 400 });
 
+    // 房间状态检查与自动过期（10 分钟无活动）
+    {
+      const { data: rooms, error: rerr } = await supabase
+        .from("chat_rooms").select("id,last_active_at,ended_at").eq("id", roomId).limit(1);
+      if (rerr) return NextResponse.json({ error: rerr.message }, { status: 500 });
+      const room = rooms && rooms[0];
+      if (!room) return NextResponse.json({ error: "room not found" }, { status: 404 });
+      const now = Date.now();
+      const lastActive = room.last_active_at ? new Date(room.last_active_at as any).getTime() : 0;
+      const ended = !!room.ended_at;
+      const idleTooLong = lastActive && (now - lastActive > 10 * 60 * 1000);
+      if (ended || idleTooLong) {
+        if (!ended && idleTooLong) {
+          await supabase.from("chat_rooms").update({ ended_at: new Date().toISOString() }).eq("id", roomId);
+        }
+        return NextResponse.json({ error: "room ended" }, { status: 410 });
+      }
+    }
+
     // 每题每人最多 5 句、总 10 句限制
     if (promptId) {
       const { data: userCountData, error: c1 } = await supabase
@@ -49,6 +68,8 @@ export async function POST(req: NextRequest) {
 
     const { error } = await supabase.from("chat_messages").insert({ room_id: roomId, user_id: userId, nickname, prompt_id: promptId, text });
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    // 更新活跃时间
+    await supabase.from("chat_rooms").update({ last_active_at: new Date().toISOString() }).eq("id", roomId);
     return NextResponse.json({ ok: true });
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : String(e);

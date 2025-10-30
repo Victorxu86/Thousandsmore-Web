@@ -25,4 +25,8 @@ create index if not exists chat_messages_room_created_idx on public.chat_message
 alter table public.chat_rooms disable row level security;
 alter table public.chat_messages disable row level security;
 
+-- 增量列：最近活跃与结束时间（幂等）
+alter table public.chat_rooms add column if not exists last_active_at timestamptz default now();
+alter table public.chat_rooms add column if not exists ended_at timestamptz;
+
 

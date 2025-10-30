@@ -31,4 +31,20 @@ export async function POST(req: NextRequest) {
   }
 }
 
+export async function PATCH(req: NextRequest) {
+  // 结束房间
+  try {
+    const supabase = await getSupabaseServer();
+    const body = await req.json();
+    const roomId = String(body?.room_id || "");
+    if (!roomId) return NextResponse.json({ error: "missing room" }, { status: 400 });
+    const { error } = await supabase.from("chat_rooms").update({ ended_at: new Date().toISOString() }).eq("id", roomId);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return NextResponse.json({ error: msg }, { status: 500 });
+  }
+}
+
 

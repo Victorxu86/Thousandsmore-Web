@@ -457,8 +457,8 @@ export default function PlayCategoryPage({ params }: PageProps) {
                   if (promptId && r.prompt_id && r.prompt_id !== promptId) return;
                   setItems((prev) => [...prev, { id: Math.random().toString(36), user_id: r.user_id, nickname: r.nickname || undefined, text: r.text, created_at: r.created_at }]);
                 })
-                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_rooms', filter: `id=eq.${room}` }, (payload: RealtimePostgresChangesPayload<{ current_prompt_id: string|null }>) => {
-                  const pid = payload.new?.current_prompt_id;
+                .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_rooms', filter: `id=eq.${room}` }, (payload: RealtimePostgresChangesPayload<{ current_prompt_id?: string|null }>) => {
+                  const pid = (payload.new as { current_prompt_id?: string|null } | null)?.current_prompt_id ?? null;
                   if (!pid) return;
                   const collection: Array<{ id: string; type: PromptType; text: string }> =
                     (remoteItems.length ? remoteItems.map(({id,type,text})=>({id,type,text})) : prompts.map(({id,type,text})=>({id,type,text})));

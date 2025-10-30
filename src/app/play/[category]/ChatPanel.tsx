@@ -127,6 +127,7 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
     // 统一使用轮询直连，避免长连接限制
     setConnecting(false);
     setFallbackPolling(true);
+    setCode(joinCode);
     startPolling(joinCode);
     setConnected(true);
     // 发送加入信号，让邀请方结束“等待加入中”
@@ -177,7 +178,7 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
 
   async function send() {
     const client = clientRef.current;
-    if (!client || !input.trim() || quotaUsed >= quotaMax) return;
+    if (!input.trim() || quotaUsed >= quotaMax) return;
     const msg: ChatMsg = { id: `${Date.now()}_${Math.random().toString(36).slice(2, 6)}`, sender: me, text: input.trim(), ts: Date.now() };
     if (!fallbackPolling) {
       await client.channel.publish("msg", { ...msg, q: currentQuestionId || null });
@@ -248,23 +249,24 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
 
       {/* 聊天面板 */}
       {connected && (
-        <div className={`mt-4 rounded-lg border ${theme.borderAccent} bg-black/30 p-3`}> 
+        <div className="mt-4 w-full"> 
           {debug && (
             <div className="mb-2 text-xs opacity-70">连接状态: {connState} · 在线: {membersCount} · 传输: {forcedTransport}</div>
           )}
-          <div className="h-48 overflow-y-auto space-y-2 pr-1">
-            {messages.map((m)=> (
-              <div key={m.id} className={`text-sm ${m.sender===me?"text-right":"text-left"}`}>
-                <span className={`inline-block px-3 py-1.5 rounded-lg border ${theme.borderAccent} ${theme.hoverAccentBg}`}>{m.text}</span>
-              </div>
-            ))}
-            {peerTyping && <div className="text-xs opacity-70">对方正在输入…</div>}
+          <div className="flex items-end gap-2">
+            <input
+              value={input}
+              onChange={(e)=>onTyping(e.target.value)}
+              onKeyDown={(e)=>{ if(e.key==='Enter') send(); }}
+              placeholder={quotaUsed>=quotaMax?"已达本题上限":"输入消息…"}
+              disabled={quotaUsed>=quotaMax}
+              className={`flex-1 rounded-full border px-3 py-2 text-sm ${theme.borderAccent}`}
+            />
+            <div className="flex flex-col items-center">
+              <button onClick={send} disabled={quotaUsed>=quotaMax || !input.trim()} className={`px-3 py-2 rounded-full border text-sm ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent}`}>发送</button>
+              <div className="mt-1 text-[11px] opacity-70">{quotaUsed}/{quotaMax} 条/题</div>
+            </div>
           </div>
-          <div className="mt-3 flex items-center gap-2">
-            <input value={input} onChange={(e)=>onTyping(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') send(); }} placeholder={quotaUsed>=quotaMax?"已达本题上限":"输入消息…"} disabled={quotaUsed>=quotaMax} className={`flex-1 rounded-full border px-3 py-2 text-sm ${theme.borderAccent}`} />
-            <button onClick={send} disabled={quotaUsed>=quotaMax || !input.trim()} className={`px-3 py-2 rounded-full border text-sm ${theme.borderAccent} ${theme.hoverAccentBg} ${theme.shadowAccent}`}>发送</button>
-          </div>
-          <div className="mt-1 text-right text-xs opacity-70">{quotaUsed}/{quotaMax} 条/题</div>
         </div>
       )}
 

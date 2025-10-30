@@ -282,6 +282,28 @@ export default function PlayCategoryPage({ params }: PageProps) {
     } as const;
   }, [category]);
   // 房间辅助：创建/结束/复制链接
+  async function copyTextToClipboard(text: string): Promise<boolean> {
+    try {
+      await navigator.clipboard.writeText(text);
+      return true;
+    } catch {
+      try {
+        const ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.position = 'fixed';
+        ta.style.left = '-9999px';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        const ok = document.execCommand('copy');
+        document.body.removeChild(ta);
+        return ok;
+      } catch {
+        return false;
+      }
+    }
+  }
   function createRoom() {
     setShowCreateConfirm(true);
   }
@@ -295,7 +317,8 @@ export default function PlayCategoryPage({ params }: PageProps) {
     url.searchParams.set('room', data.id);
     window.history.replaceState(null, '', url.toString());
     setRoom(data.id);
-    try { await navigator.clipboard.writeText(url.toString()); showToast(lang==='en'?'Room created & link copied':'已创建并复制邀请链接'); } catch { showToast(lang==='en'?'Room created':'已创建'); }
+    const copied = await copyTextToClipboard(url.toString());
+    showToast(copied ? (lang==='en'?'Room created & link copied':'已创建并复制邀请链接') : (lang==='en'?'Room created':'已创建'));
     try { sessionStorage.setItem(`chat_created_by_me_${data.id}`, '1'); } catch {}
     setShowCreateConfirm(false);
   }
@@ -312,12 +335,12 @@ export default function PlayCategoryPage({ params }: PageProps) {
     window.history.replaceState(null, '', url.toString());
     setRoom(null);
   }
-  function copyLink() {
+  async function copyLink() {
     const url = new URL(window.location.href);
     const hasRoom = !!url.searchParams.get('room');
     if (!hasRoom) { showToast(lang==='en'?'No room yet. Create first.':'尚未创建房间'); return; }
-    navigator.clipboard.writeText(url.toString());
-    showToast(lang==='en'?'Link copied':'已复制链接');
+    const ok = await copyTextToClipboard(url.toString());
+    showToast(ok ? (lang==='en'?'Link copied':'已复制链接') : (lang==='en'?'Copy failed':'复制失败'));
   }
 
   // 首次渲染完成标记，避免 SSR/CSR 切换闪烁

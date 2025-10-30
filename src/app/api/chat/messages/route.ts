@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     const text = String(body?.text || "").trim();
     if (!roomId || !userId || !text) return NextResponse.json({ error: "missing fields" }, { status: 400 });
 
-    // 房间状态检查与自动过期（10 分钟无活动）
+    // 房间状态检查与自动过期（30 分钟无活动）
     {
       const { data: rooms, error: rerr } = await supabase
         .from("chat_rooms").select("id,last_active_at,ended_at").eq("id", roomId).limit(1);
@@ -36,7 +36,7 @@ export async function POST(req: NextRequest) {
       const now = Date.now();
       const lastActive = room.last_active_at ? Date.parse(String(room.last_active_at)) : 0;
       const ended = !!room.ended_at;
-      const idleTooLong = lastActive && (now - lastActive > 10 * 60 * 1000);
+      const idleTooLong = lastActive && (now - lastActive > 30 * 60 * 1000);
       if (ended || idleTooLong) {
         if (!ended && idleTooLong) {
           await supabase.from("chat_rooms").update({ ended_at: new Date().toISOString() }).eq("id", roomId);

@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     if (!room) return NextResponse.json({ error: "room not found" }, { status: 404 });
   const now = Date.now();
   const lastActive = room.last_active_at ? Date.parse(String(room.last_active_at)) : 0;
-    const idleTooLong = lastActive && (now - lastActive > 10 * 60 * 1000);
+    const idleTooLong = lastActive && (now - lastActive > 30 * 60 * 1000);
     if (room.ended_at || idleTooLong) {
       if (!room.ended_at && idleTooLong) {
         await supabase.from("chat_rooms").update({ ended_at: new Date().toISOString() }).eq("id", roomId);

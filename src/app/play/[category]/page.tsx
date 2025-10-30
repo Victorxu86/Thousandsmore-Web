@@ -41,6 +41,31 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
   const promptId = currentPrompt?.id || null;
   const myCount = useMemo(() => items.filter((m) => m.user_id === myId).length, [items, myId]);
   const isHost = useMemo(() => { try { return sessionStorage.getItem(`chat_created_by_me_${room}`) === '1'; } catch { return false; } }, [room]);
+  const [copiedInModal, setCopiedInModal] = useState<null | boolean>(null);
+
+  async function copyLinkInModal() {
+    try {
+      const url = new URL(window.location.href).toString();
+      try {
+        await navigator.clipboard.writeText(url);
+        setCopiedInModal(true);
+        return;
+      } catch {}
+      const ta = document.createElement('textarea');
+      ta.value = url;
+      ta.setAttribute('readonly', '');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      const ok = document.execCommand('copy');
+      document.body.removeChild(ta);
+      setCopiedInModal(!!ok);
+    } catch {
+      setCopiedInModal(false);
+    }
+  }
 
   useEffect(() => {
     if (!room) return;
@@ -177,6 +202,15 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
                   <div className="mb-2 text-xs text-purple-200/90">{lang==='en'?'Link copied. Share with your friend.':'链接已复制，分享给好友。'}</div>
                 )}
                 <p className="text-sm opacity-80 mb-4">{lang==='en'?'This will be shown to your partner in this room only.':'只用于当前房间展示，不会被保存。'}</p>
+                <div className="mb-3 flex items-center justify-between">
+                  <button onClick={copyLinkInModal} className="px-3 py-1.5 rounded-full border border-purple-500/60 text-xs hover:bg-white/10">{lang==='en'?'Copy Link':'复制链接'}</button>
+                  {copiedInModal === true && (
+                    <span className="text-xs text-purple-200/90">{lang==='en'?'Copied. Please share the invite.':'复制成功，请分享邀请。'}</span>
+                  )}
+                  {copiedInModal === false && (
+                    <span className="text-xs text-red-300/90">{lang==='en'?'Copy failed':'复制失败'}</span>
+                  )}
+                </div>
                 <div className="flex items-center gap-2">
                   <input autoFocus value={nick} onChange={(e)=>setNick(e.target.value)} placeholder={lang==='en'?'Nickname':'昵称'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-sm text-white placeholder:text-white/40" />
                   <button onClick={()=>{ if(nick.trim()){ setNeedNick(false); try { sessionStorage.setItem(`chat_nick_set_${room}`,'1'); sessionStorage.setItem(`chat_nick_${room}`, nick.trim()); } catch {} } }} className="px-4 py-2 rounded-full bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50" disabled={!nick.trim()}>{lang==='en'?'Confirm':'确定'}</button>

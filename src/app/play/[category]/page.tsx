@@ -479,6 +479,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
             const [realtimeReady, setRealtimeReady] = useState<boolean>(false);
             const isTyping = input.trim().length > 0;
             const lastSentAtRef = useRef<number>(0);
+            const oneShotPollRef = useRef<number | null>(null);
             const promptId = currentPrompt?.id || null;
             useEffect(() => {
               if (!room) return;
@@ -549,34 +550,32 @@ export default function PlayCategoryPage({ params }: PageProps) {
               }
               lastSentAtRef.current = Date.now();
               setInput("");
+              // 发送后做一次兜底刷新，确保双方一致（仅一次）
+              if (oneShotPollRef.current) { try { clearTimeout(oneShotPollRef.current); } catch {} }
+              oneShotPollRef.current = window.setTimeout(async () => {
+                try {
+                  const qs = new URLSearchParams({ room, limit: "50" });
+                  if (effectivePid) qs.set("prompt", String(effectivePid));
+                  const r = await fetch(`/api/chat/messages?${qs.toString()}`);
+                  const j = await r.json();
+                  if (Array.isArray(j.items)) {
+                    type ChatMsg = { id: string; user_id: string; nickname?: string; text: string; created_at: string };
+                    const fetched = j.items as Array<ChatMsg>;
+                    setItems((prev) => {
+                      const byId = new Map<string, ChatMsg>();
+                      for (const m of prev) byId.set(m.id, m);
+                      for (const m of fetched) byId.set(m.id, m);
+                      const merged = Array.from(byId.values());
+                      merged.sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+                      return merged;
+                    });
+                  }
+                } catch {}
+                finally { oneShotPollRef.current = null; }
+              }, 500);
             }
-            // 轮询兜底（Realtime 未生效时也能看到对方）
-            useEffect(() => {
-              if (!room) return;
-              if (realtimeReady) return; // 有实时就不轮询
-              const t = setInterval(async () => {
-                if (isTyping) return; // 正在输入不打扰
-                const last = lastSentAtRef.current || 0;
-                if (Date.now() - last < 2000) return; // 发送后2秒内不刷新
-                const qs = new URLSearchParams({ room, limit: "50" });
-                if (promptId) qs.set("prompt", String(promptId));
-                const res = await fetch(`/api/chat/messages?${qs.toString()}`);
-                const data = await res.json();
-                if (Array.isArray(data.items)) {
-                  type ChatMsg = { id: string; user_id: string; nickname?: string; text: string; created_at: string };
-                  const fetched = data.items as Array<ChatMsg>;
-                  setItems((prev) => {
-                    const byId = new Map<string, ChatMsg>();
-                    for (const m of prev) byId.set(m.id, m);
-                    for (const m of fetched) byId.set(m.id, m);
-                    const merged = Array.from(byId.values());
-                    merged.sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-                    return merged;
-                  });
-                }
-              }, 4000);
-              return () => clearInterval(t);
-            }, [promptId, realtimeReady, isTyping, lastSentAtRef]);
+            // 停用定时轮询，仅在发送后 one-shot 兜底
+            useEffect(() => { return () => {}; }, []);
             // 输入时 ping，防止超时结束
             useEffect(() => {
               if (!room) return;
@@ -613,7 +612,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
               <div className="fixed inset-x-0 bottom-4 flex justify-center pointer-events-none">
                 <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(168,85,247,.25)] p-3">
                   {needNick && (
-                    <div className="fixed inset-x-0 z-50 bottom-80 flex items-center justify-center">
+                    <div className="fixed inset-x-0 z-50 bottom-60 flex items-center justify-center">
                       <div className="w-[92%] max-w-sm rounded-xl border border-purple-500/60 bg-black/90 text-white p-5 shadow-[0_10px_40px_rgba(168,85,247,.35)]">
                         <h2 className="text-lg font-semibold mb-2">{lang==='en'?'Set your nickname':'请输入昵称'}</h2>
                         <p className="text-sm opacity-80 mb-3">{lang==='en'?'This will be shown to your partner in this room only.':'只用于当前房间展示，不会被保存。'}</p>

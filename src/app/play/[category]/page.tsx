@@ -156,18 +156,25 @@ export default function PlayCategoryPage({ params }: PageProps) {
       // 切题视为活跃：ping 房间，防止10分钟自动结束
       if (room) {
         fetch('/api/chat/room/ping', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room_id: room }) });
-        // 若房间存在，拉取当前房间选中题目
+        // 若房间存在，拉取当前房间选中题目；若为空则以首题作为默认并写回房间
         try {
           const rr = await fetch(`/api/chat/room?room_id=${encodeURIComponent(room)}`);
           const rj = await rr.json();
-          const pid = rj?.current_prompt_id as string | undefined;
+          const pid = rj?.current_prompt_id as (string | null | undefined);
+          const collection = (items as Array<{id:string; type: PromptType; text:string; topic?:string|null}>);
           if (pid) {
-            const match = (items as Array<{id:string; type: PromptType; text:string; topic?:string|null}>).find(x=>x.id===pid);
-            if (match) {
-              const p: Prompt = { id: match.id, text: match.text, type: match.type };
+            const hit = collection.find(x=>x.id===pid);
+            if (hit) {
+              const p: Prompt = { id: hit.id, text: hit.text, type: hit.type };
               setCurrentPrompt(p);
               setSeenPromptIds(new Set([p.id]));
             }
+          } else if (collection.length > 0) {
+            const first = collection[0];
+            const p: Prompt = { id: first.id, text: first.text, type: first.type };
+            setCurrentPrompt(p);
+            setSeenPromptIds(new Set([p.id]));
+            fetch('/api/chat/room', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room_id: room, current_prompt_id: first.id }) });
           }
         } catch {}
       }
@@ -190,13 +197,15 @@ export default function PlayCategoryPage({ params }: PageProps) {
 
   useEffect(() => {
     if (!category) return;
+    // 房间会话由房间状态决定题目，不进行本地随机
+    if (room) return;
     const source = remoteItems.length > 0 ? remoteItems : getPromptsByType(category, typeFilter);
     const filtered = typeFilter === "all" ? source : source.filter((p) => p.type === typeFilter);
     const next = getRandomPrompt(filtered as Prompt[], undefined);
     setCurrentPrompt(next || null);
     setSeenPromptIds(new Set(next ? [next.id] : []));
     setPromptReady(true);
-  }, [category, typeFilter, remoteItems]);
+  }, [category, typeFilter, remoteItems, room]);
 
   if (!category) {
     return (
@@ -428,6 +437,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
             const [items, setItems] = useState<Array<{ id: string; user_id: string; nickname?: string; text: string; created_at: string }>>([]);
             const [myId, setMyId] = useState<string>("");
             const [nick, setNick] = useState<string>("");
+            const [needNick, setNeedNick] = useState<boolean>(true);
             const [input, setInput] = useState("");
             const promptId = currentPrompt?.id || null;
             useEffect(() => {
@@ -437,8 +447,9 @@ export default function PlayCategoryPage({ params }: PageProps) {
               try { uid = sessionStorage.getItem("chat_uid") || ""; } catch {}
               if (!uid) { uid = Math.random().toString(36).slice(2, 10); try { sessionStorage.setItem("chat_uid", uid); } catch {} }
               setMyId(uid);
-              // 默认昵称
-              try { setNick(sessionStorage.getItem("chat_nick") || ""); } catch {}
+              // 强制每次进入房间填写昵称（不持久化）
+              setNick("");
+              setNeedNick(true);
               // 载入最近消息
               (async () => {
                 const qs = new URLSearchParams({ room, limit: "50" });
@@ -474,6 +485,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
             }, [promptId]);
             async function send() {
               if (!room || !myId || !input.trim()) return;
+              if (!nick.trim()) { showToast(lang==='en'? 'Please set a nickname' : '请先设置昵称'); return; }
               const payload = { room_id: room, user_id: myId, nickname: nick || null, prompt_id: promptId, text: input.trim() };
               const res = await fetch(`/api/chat/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) });
               const data = await res.json();
@@ -508,6 +520,18 @@ export default function PlayCategoryPage({ params }: PageProps) {
             return (
               <div className="fixed inset-x-0 bottom-4 flex justify-center pointer-events-none">
                 <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl border border-purple-500/60 bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(168,85,247,.25)] p-3">
+                  {needNick && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center">
+                      <div className="w-[92%] max-w-sm rounded-xl border border-purple-500/60 bg-black/90 text-white p-5 shadow-[0_10px_40px_rgba(168,85,247,.35)]">
+                        <h2 className="text-lg font-semibold mb-2">{lang==='en'?'Set your nickname':'请输入昵称'}</h2>
+                        <p className="text-sm opacity-80 mb-3">{lang==='en'?'This will be shown to your partner in this room only.':'只用于当前房间展示，不会被保存。'}</p>
+                        <div className="flex items-center gap-2">
+                          <input autoFocus value={nick} onChange={(e)=>setNick(e.target.value)} placeholder={lang==='en'?'Nickname':'昵称'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-sm text-white placeholder:text-white/40" />
+                          <button onClick={()=>{ if(nick.trim()){ setNeedNick(false);} }} className="px-3 py-2 rounded bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50" disabled={!nick.trim()}>{lang==='en'?'Confirm':'确定'}</button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div className="text-xs text-purple-200/80 mb-2 flex items-center justify-between">
                     <span>{lang === 'en' ? 'Chat' : '聊天'} {room ? `#${room}` : ''}</span>
                     {!room && <span className="opacity-70">{lang === 'en' ? 'Create a chat to start' : '创建房间后开始聊天'}</span>}
@@ -524,9 +548,9 @@ export default function PlayCategoryPage({ params }: PageProps) {
                     )}
                   </div>
                   <div className="mt-3 flex items-center gap-2">
-                    <input value={nick} onChange={(e)=>{ setNick(e.target.value); try { sessionStorage.setItem('chat_nick', e.target.value); } catch {} }} placeholder={lang==='en'?'Nickname (optional)':'昵称（可选）'} className="w-36 px-2 py-1 rounded border border-purple-500/50 bg-black/50 text-sm text-white placeholder:text-white/40" />
+                    <input value={nick} onChange={(e)=> setNick(e.target.value)} placeholder={lang==='en'?'Nickname':'昵称'} className="w-36 px-2 py-1 rounded border border-purple-500/50 bg-black/50 text-sm text-white placeholder:text-white/40" />
                     <input value={input} onChange={(e)=>setInput(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') send(); }} placeholder={lang==='en'?'Type a message':'输入消息'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-sm text-white placeholder:text-white/40" />
-                    <button onClick={send} className="px-3 py-2 rounded bg-purple-600 text-white text-sm hover:brightness-110">{lang==='en'?'Send':'发送'}</button>
+                    <button onClick={send} disabled={!nick.trim()} className="px-3 py-2 rounded bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50">{lang==='en'?'Send':'发送'}</button>
                   </div>
                 </div>
               </div>

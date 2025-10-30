@@ -19,10 +19,10 @@ export async function GET(req: NextRequest) {
     const channel = deriveChannel(code, secret);
     const rest = new Ably.Rest(key);
     const ch = rest.channels.get(channel);
-    const params: Ably.Types.PaginatedResultParams = {};
+    const params: { start?: string; end?: string; direction?: 'forwards' | 'backwards'; limit?: number } = {};
     if (sinceMs > 0) params.start = new Date(sinceMs).toISOString();
     params.direction = 'forwards';
-    const page = await ch.history(params);
+    const page = await ch.history(params as any);
     const items = (page.items || []).map((m) => ({ name: m.name, data: m.data, ts: m.timestamp }));
     return NextResponse.json({ items });
   } catch (e: unknown) {

@@ -213,9 +213,6 @@ export default function ChatPanel({ theme, currentQuestionId, categoryId, onRoom
       {/* 聊天面板 */}
       {connected && (
         <div className="mt-4 w-full"> 
-          {debug && (
-            <div className="mb-2 text-xs opacity-70">连接状态: {connState} · 在线: {membersCount} · 传输: {forcedTransport}</div>
-          )}
           <div className="flex items-end gap-2">
             <input
               value={input}

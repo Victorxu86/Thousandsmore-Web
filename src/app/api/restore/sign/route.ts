@@ -21,20 +21,22 @@ export async function POST(req: NextRequest) {
     const rows = data as Array<{ scope: EntitlementScope }>;
     const scopes: EntitlementScope[] = rows.map((r) => r.scope);
     const scope: EntitlementScope = scopes.includes("all") ? "all" : scopes[0] || "all";
-    // 限速：同邮箱每日最多 5 次、同 IP 每小时最多 10 次
+    // 限速：同一个邮箱两小时内最多生成 2 个链接
     const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "unknown";
+    const twoHoursAgo = new Date(Date.now() - 2*3600*1000).toISOString();
     try {
-      const dayAgo = new Date(Date.now() - 24*3600*1000).toISOString();
-      const hourAgo = new Date(Date.now() - 3600*1000).toISOString();
-      const { data: emailCount } = await supabase
+      const { count, error: rerr } = await supabase
         .from("restore_tokens")
         .select("jti", { count: "exact", head: true })
         .ilike("email", email)
-        .gte("created_at", dayAgo);
-      if ((emailCount?.length ?? 0) === 0 && (emailCount as any) === null) {/*ignore*/}
-      const emailTooMany = (emailCount as any)?.length === undefined ? false : false; // placeholder
-      // 由于 head:true 时返回 data 为空，仅依赖 count 不同客户端字段，这里不再读 count，留给 Supabase 行为兼容
-    } catch {}
+        .gte("created_at", twoHoursAgo);
+      if (rerr) throw rerr;
+      if ((count ?? 0) >= 2) {
+        return NextResponse.json({ error: "rate_limited", message: "两小时内最多生成两次，请稍后再试" }, { status: 429 });
+      }
+    } catch (e) {
+      // 统计失败不阻塞生成，但建议在日志中观测（此处略）
+    }
     // 生成 jti 并记录，用于一次性校验
     const jti = Math.random().toString(36).slice(2, 12) + Math.random().toString(36).slice(2, 8);
     try {

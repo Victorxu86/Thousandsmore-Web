@@ -779,8 +779,12 @@ export default function PlayCategoryPage({ params }: PageProps) {
           <span className={`${theme.textAccent} group-hover:text-white`}>{lang === "en" ? "Back" : "返回"}</span>
         </Link>
         <div className="flex-1" />
+      </div>
+
+      {/* 垂直排列：切换控件 + 聊天操作按钮 */}
+      <div className="w-full max-w-2xl mt-3 flex flex-col gap-2">
         {allowedTypes.length > 1 && (
-          <div className="relative">
+          <div className="relative self-start">
             {(() => {
               const options = ["all", "truth", "dare"] as const;
               const current: "all" | "truth" | "dare" =
@@ -809,7 +813,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
           </div>
         )}
         {(category.id === 'dating' || category.id === 'intimacy') && (
-          <div className="ml-3 flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <button onClick={createRoom} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'Invite Friends':'邀请朋友'}</button>
             <button onClick={copyLink} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'Copy Link':'复制链接'}</button>
             <button onClick={endRoom} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'End':'结束房间'}</button>
@@ -932,7 +936,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
         {/* Toast */}
         {toast && (
           <div className="fixed inset-x-0 bottom-20 flex justify-center pointer-events-none">
-            <div className="pointer-events-auto rounded-full border border-purple-500/60 bg-black/85 text-white text-sm px-4 py-2 shadow-[0_6px_20px_rgba(168,85,247,.25)]">
+            <div className={`pointer-events-auto rounded-full border ${theme.borderAccent} bg-black/85 text-white text-sm px-4 py-2 shadow-[0_6px_20px_rgba(168,85,247,.25)]`}>
               {toast}
             </div>
           </div>
@@ -943,7 +947,11 @@ export default function PlayCategoryPage({ params }: PageProps) {
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={()=>setShowCreateConfirm(false)} />
             <div className={`relative z-10 w-[92%] max-w-sm rounded-xl bg-black/90 text-white p-5 border ${theme.borderAccent} shadow-[0_10px_40px_rgba(168,85,247,.35)]`}>
               <h3 className="text-lg font-semibold mb-2">{lang==='en'?'Start a chat room?':'是否创建聊天房间？'}</h3>
-              <p className="text-sm opacity-80">{lang==='en'?'Share the link with friends to chat in Deeptalk.':'创建后复制链接邀请朋友在 Deeptalk 中对话。'}</p>
+              <p className="text-sm opacity-80">{
+                category.id==='intimacy'
+                  ? (lang==='en' ? 'Share the link with friends to chat on Intimacy.' : '创建后复制链接邀请朋友在 激情 页面对话。')
+                  : (lang==='en' ? 'Share the link with friends to chat in Deeptalk.' : '创建后复制链接邀请朋友在 Deeptalk 中对话。')
+              }</p>
               <p className="text-sm opacity-80 mb-4">{lang==='en'?'Note: Max 5 messages per person per question.':'说明：每道题每人允许发送 5 条消息。'}</p>
               <div className="flex items-center justify-end gap-2">
                 <button onClick={()=>setShowCreateConfirm(false)} className={`px-3 py-2 rounded-full text-sm border ${theme.borderAccent} hover:bg-white/10`}>{lang==='en'?'Cancel':'取消'}</button>

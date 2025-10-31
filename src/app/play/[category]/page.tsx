@@ -760,7 +760,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
             </div>
             <div className="text-lg leading-relaxed whitespace-pre-wrap">{currentPrompt.text}</div>
 
-            <div className="mt-6 text-xs opacity-70">{isPro ? (lang === "en" ? "All questions unlocked" : "已解锁全部问题") : (lang === "en" ? "Trial (max 10 per category)" : "体验版（最多 10 条/分类）")}</div>
+            <div className="mt-6 text-xs opacity-70">{isPro ? (lang === "en" ? "All questions unlocked" : "已解锁全部问题") : (lang === "en" ? "Trial mode. Unlock full version." : "当前为体验版，完整版请解锁。")}</div>
           </div>
         ) : (
           <div className="rounded-lg border p-6 opacity-70 mt-10">{lang === "en" ? "No items available" : "暂无可用条目"}</div>

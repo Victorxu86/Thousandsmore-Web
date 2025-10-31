@@ -3,7 +3,6 @@ import { getSupabaseServer } from "@/lib/supabaseServer";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { ENTITLEMENT_COOKIE, verifyEntitlement } from "@/lib/token";
 import { categories, getCategoryById } from "@/data";
-import { FREE_LIMIT_PER_CATEGORY } from "@/data/config";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -65,7 +64,7 @@ export async function GET(req: NextRequest) {
         .eq("is_published", true)
         .eq("is_trial", true);
       if (topics.length > 0) query = query.in("topic", topics);
-      const { data, error } = await query.order("id").limit(FREE_LIMIT_PER_CATEGORY);
+      const { data, error } = await query.order("id");
       if (error) throw error;
       type DbRow = { id: string; type: "question"|"truth"|"dare"; topic: string|null; text: string|null; text_en: string|null };
       const rows: DbRow[] = Array.isArray(data) ? (data as DbRow[]) : [];
@@ -89,7 +88,7 @@ export async function GET(req: NextRequest) {
     const category = categories[categoryId as keyof typeof categories];
     // 内置题库未携带 topic 字段，这里忽略 topic 过滤
     const all = category.prompts;
-    const items = isPro ? all : all.slice(0, FREE_LIMIT_PER_CATEGORY);
+    const items = all;
     return NextResponse.json({ isPro, items, fallback: true });
   }
 }

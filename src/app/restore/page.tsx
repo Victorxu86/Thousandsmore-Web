@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { getSupabaseBrowser } from "@/lib/supabase";
 import { getBaseUrl } from "@/lib/config";
 import Link from "next/link";
@@ -9,6 +9,9 @@ export default function RestorePage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const linkRef = useRef<HTMLTextAreaElement | null>(null);
 
   async function handleSend() {
     setLoading(true);
@@ -31,11 +34,13 @@ export default function RestorePage() {
   async function handleGenerateLink() {
     setLoading(true);
     setMsg(null);
+    setGeneratedLink(null);
     try {
       const r = await fetch("/api/restore/sign", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email }) });
       const j = await r.json();
       if (!r.ok) throw new Error(j.error || "生成失败");
-      setMsg(`已生成恢复链接：\n${j.link}`);
+      setGeneratedLink(j.link as string);
+      setMsg("已生成恢复链接");
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "生成失败";
       setMsg(message);
@@ -78,6 +83,33 @@ export default function RestorePage() {
         </button>
       </div>
       {msg && <div className="mt-4 text-sm opacity-80">{msg}</div>}
+      {generatedLink && (
+        <div className="mt-3 rounded-xl border border-purple-500/60 bg-black/80 text-white p-4 shadow-[0_8px_30px_rgba(168,85,247,.25)]">
+          <div className="text-xs opacity-80 mb-2">签名恢复链接（30分钟内有效）</div>
+          <div className="flex items-start gap-2">
+            <textarea
+              ref={linkRef}
+              readOnly
+              value={generatedLink}
+              className="flex-1 text-xs bg-black/40 border border-purple-500/40 rounded p-2 leading-relaxed break-all select-all"
+              rows={3}
+            />
+            <button
+              onClick={async ()=>{
+                try {
+                  await navigator.clipboard.writeText(generatedLink);
+                  setCopied(true);
+                  setTimeout(()=>setCopied(false), 1200);
+                } catch {
+                  try { linkRef.current?.select(); document.execCommand('copy'); setCopied(true); setTimeout(()=>setCopied(false), 1200); } catch {}
+                }
+              }}
+              className="shrink-0 px-3 py-2 rounded-full border border-purple-500/60 text-xs hover:bg-purple-600/10"
+            >复制</button>
+          </div>
+          <div className={`mt-2 text-xs transition-opacity duration-300 ${copied ? 'opacity-100' : 'opacity-0'}`}>已复制，请粘贴到系统浏览器打开</div>
+        </div>
+      )}
     </div>
   );
 }

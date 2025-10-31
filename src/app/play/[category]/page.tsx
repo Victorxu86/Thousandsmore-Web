@@ -779,6 +779,35 @@ export default function PlayCategoryPage({ params }: PageProps) {
           <span className={`${theme.textAccent} group-hover:text-white`}>{lang === "en" ? "Back" : "返回"}</span>
         </Link>
         <div className="flex-1" />
+        {allowedTypes.length > 1 && (
+          <div className="relative">
+            {(() => {
+              const options = ["all", "truth", "dare"] as const;
+              const current: "all" | "truth" | "dare" =
+                typeFilter === "truth" || typeFilter === "dare" ? typeFilter : "all";
+              const idx = Math.max(0, options.indexOf(current));
+              const thumbBg = category.id === "party" ? "bg-yellow-500/70" : category.id === "intimacy" ? "bg-rose-600/70" : "bg-purple-600/70";
+              const selectedText = category.id === "party" ? "text-black" : "text-white";
+              return (
+                <div className={`relative grid grid-cols-3 rounded-full border ${theme.borderAccent} bg-black/30 backdrop-blur-sm p-0.5`} style={{ width: 220 }}>
+                  <div
+                    className={`absolute inset-y-0 rounded-full transition-transform duration-200 ease-out ${thumbBg} shadow-[0_1px_6px_rgba(0,0,0,0.25)]`}
+                    style={{ width: "33.3333%", transform: `translateX(${idx * 100}%)` }}
+                  />
+                  {options.map((opt) => (
+                    <button
+                      key={opt}
+                      onClick={() => setTypeFilter(opt === "all" ? "all" : opt)}
+                      className={`relative z-10 px-2.5 py-1 text-xs whitespace-nowrap transition-colors cursor-pointer ${typeFilter === opt ? `${selectedText} font-medium` : `${theme.textAccent} opacity-80 hover:opacity-100`}`}
+                    >
+                      {opt === "all" ? (lang === "en" ? "Mixed" : "混合") : opt === "truth" ? (lang === "en" ? "Truth" : "真心话") : (lang === "en" ? "Dare" : "大冒险")}
+                    </button>
+                  ))}
+                </div>
+              );
+            })()}
+          </div>
+        )}
       </div>
 
       {/* 邀请操作按钮：置于筛选控件下方一行，靠右对齐 */}

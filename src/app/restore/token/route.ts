@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { ENTITLEMENT_COOKIE, verifyEntitlement, signEntitlement, type EntitlementScope } from "@/lib/token";
+import { ENTITLEMENT_COOKIE, verifyRestoreToken, signEntitlement, type EntitlementScope } from "@/lib/token";
 import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function GET(req: NextRequest) {
@@ -8,8 +8,8 @@ export async function GET(req: NextRequest) {
   const next = searchParams.get("next") || "/play/deeptalk?restore=ok";
   if (!token) return NextResponse.redirect(new URL("/restore?error=missing_token", req.url));
 
-  const payload = verifyEntitlement(token);
-  if (!payload?.email) return NextResponse.redirect(new URL("/restore?error=invalid_token", req.url));
+  const payload = verifyRestoreToken(token);
+  if (!payload?.email || !payload?.jti) return NextResponse.redirect(new URL("/restore?error=invalid_token", req.url));
   if (payload.exp && payload.exp * 1000 < Date.now()) return NextResponse.redirect(new URL("/restore?error=expired", req.url));
 
   const email = payload.email.toLowerCase();
@@ -22,6 +22,21 @@ export async function GET(req: NextRequest) {
   if (error) return NextResponse.redirect(new URL(`/restore?error=${encodeURIComponent(error.message)}`, req.url));
   const unlocked = Array.isArray(data) && data.length > 0;
   if (!unlocked) return NextResponse.redirect(new URL("/pricing?restore=not_found", req.url));
+
+  // 一次性校验：占用 jti，若已使用则拒绝
+  try {
+    const { data: usedRows, error: uerr } = await supabase
+      .from("restore_tokens")
+      .update({ used_at: new Date().toISOString() })
+      .eq("jti", payload.jti)
+      .is("used_at", null)
+      .select("jti")
+      .limit(1);
+    if (uerr) {/* ignore missing table */}
+    if (Array.isArray(usedRows) && usedRows.length === 0) {
+      return NextResponse.redirect(new URL("/restore?error=used", req.url));
+    }
+  } catch {}
 
   const rows = Array.isArray(data) ? (data as Array<{ scope: EntitlementScope }>) : [];
   const scopes: EntitlementScope[] = rows.map((r) => r.scope);

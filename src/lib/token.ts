@@ -8,6 +8,10 @@ export type EntitlementPayload = {
   exp: number; // expires at (seconds)
 };
 
+export type RestoreTokenPayload = EntitlementPayload & {
+  jti: string; // one-time token id
+};
+
 const COOKIE_NAME = "tm_entitlement";
 export const ENTITLEMENT_COOKIE = COOKIE_NAME;
 
@@ -37,6 +41,23 @@ export function verifyEntitlement(token: string | undefined): EntitlementPayload
     const now = Math.floor(Date.now() / 1000);
     if (payload.exp && now > payload.exp) return null;
     return payload;
+  } catch {
+    return null;
+  }
+}
+
+export function signRestoreToken(payload: RestoreTokenPayload): string {
+  return signEntitlement(payload as unknown as EntitlementPayload);
+}
+
+export function verifyRestoreToken(token: string | undefined): RestoreTokenPayload | null {
+  const base = verifyEntitlement(token) as EntitlementPayload | null;
+  if (!base) return null;
+  try {
+    const body = Buffer.from(String(token).split(".")[0], "base64url").toString("utf8");
+    const full = JSON.parse(body) as RestoreTokenPayload;
+    if (!full.jti) return null;
+    return full;
   } catch {
     return null;
   }

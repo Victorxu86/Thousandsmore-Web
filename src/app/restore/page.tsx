@@ -16,12 +16,28 @@ export default function RestorePage() {
     try {
       const { error } = await supabase.auth.signInWithOtp({
         email,
-        options: { emailRedirectTo: `${getBaseUrl()}/restore/callback` },
+        options: { emailRedirectTo: `${getBaseUrl()}/restore/callback?next=/play/deeptalk?restore=ok` },
       });
       if (error) throw error;
       setMsg("恢复链接已发送，请检查邮箱");
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : "发送失败";
+      setMsg(message);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGenerateLink() {
+    setLoading(true);
+    setMsg(null);
+    try {
+      const r = await fetch("/api/restore/sign", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ email }) });
+      const j = await r.json();
+      if (!r.ok) throw new Error(j.error || "生成失败");
+      setMsg(`已生成恢复链接：\n${j.link}`);
+    } catch (e: unknown) {
+      const message = e instanceof Error ? e.message : "生成失败";
       setMsg(message);
     } finally {
       setLoading(false);
@@ -52,6 +68,13 @@ export default function RestorePage() {
           disabled={!email || loading}
         >
           发送
+        </button>
+        <button
+          className="px-4 py-2 rounded-full border border-purple-500/60 text-sm hover:bg-purple-600/10 disabled:opacity-50"
+          onClick={handleGenerateLink}
+          disabled={!email || loading}
+        >
+          直接生成链接
         </button>
       </div>
       {msg && <div className="mt-4 text-sm opacity-80">{msg}</div>}

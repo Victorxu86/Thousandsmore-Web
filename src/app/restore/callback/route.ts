@@ -5,6 +5,7 @@ import { ENTITLEMENT_COOKIE, signEntitlement, type EntitlementScope } from "@/li
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
   const code = searchParams.get("code");
+  const next = searchParams.get("next") || "/play/deeptalk?restore=ok";
   if (!code) return NextResponse.redirect(new URL("/restore?error=missing_code", req.url));
 
   const supabase = await getSupabaseServer();
@@ -37,7 +38,7 @@ export async function GET(req: NextRequest) {
       ? "intimacy"
       : "all";
   const token = signEntitlement({ email, scope: preferredScope, iat: Math.floor(Date.now()/1000), exp: Math.floor(Date.now()/1000) + 7*24*3600 });
-  const res = NextResponse.redirect(new URL(`/?restore=ok`, req.url));
+  const res = NextResponse.redirect(new URL(next, req.url));
   res.cookies.set(ENTITLEMENT_COOKIE, token, { httpOnly: true, secure: true, sameSite: "lax", path: "/", maxAge: 7*24*3600 });
   return res;
 }

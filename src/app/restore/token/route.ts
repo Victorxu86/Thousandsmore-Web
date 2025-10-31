@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { ENTITLEMENT_COOKIE, verifyEntitlement, signEntitlement, type EntitlementScope } from "@/lib/token";
-import { getSupabaseServer } from "@/lib/supabaseServer";
+import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -12,9 +12,13 @@ export async function GET(req: NextRequest) {
   if (!payload?.email) return NextResponse.redirect(new URL("/restore?error=invalid_token", req.url));
   if (payload.exp && payload.exp * 1000 < Date.now()) return NextResponse.redirect(new URL("/restore?error=expired", req.url));
 
-  const email = payload.email;
-  const supabase = await getSupabaseServer();
-  const { data, error } = await supabase.from("entitlements").select("unlocked,scope").eq("email", email).eq("unlocked", true);
+  const email = payload.email.toLowerCase();
+  const supabase = getSupabaseAdmin();
+  const { data, error } = await supabase
+    .from("entitlements")
+    .select("unlocked,scope")
+    .eq("unlocked", true)
+    .ilike("email", email);
   if (error) return NextResponse.redirect(new URL(`/restore?error=${encodeURIComponent(error.message)}`, req.url));
   const unlocked = Array.isArray(data) && data.length > 0;
   if (!unlocked) return NextResponse.redirect(new URL("/pricing?restore=not_found", req.url));

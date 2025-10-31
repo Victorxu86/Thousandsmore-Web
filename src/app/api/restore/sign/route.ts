@@ -1,14 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 import { signEntitlement, type EntitlementScope } from "@/lib/token";
-import { getSupabaseServer } from "@/lib/supabaseServer";
+import { getSupabaseAdmin } from "@/lib/supabaseAdmin";
 import { getBaseUrl } from "@/lib/config";
 
 export async function POST(req: NextRequest) {
   try {
-    const { email } = await req.json();
-    if (!email) return NextResponse.json({ error: "missing email" }, { status: 400 });
-    const supabase = await getSupabaseServer();
-    const { data, error } = await supabase.from("entitlements").select("unlocked,scope").eq("email", email).eq("unlocked", true);
+    const body = await req.json();
+    const emailRaw = String(body?.email || "").trim();
+    if (!emailRaw) return NextResponse.json({ error: "missing email" }, { status: 400 });
+    const email = emailRaw.toLowerCase();
+    const supabase = getSupabaseAdmin();
+    const { data, error } = await supabase
+      .from("entitlements")
+      .select("unlocked,scope")
+      .eq("unlocked", true)
+      .ilike("email", email);
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     const unlocked = Array.isArray(data) && data.length > 0;
     if (!unlocked) return NextResponse.json({ error: "not found" }, { status: 404 });

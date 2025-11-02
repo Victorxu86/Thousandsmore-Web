@@ -808,18 +808,22 @@ export default function PlayCategoryPage({ params }: PageProps) {
             })()}
           </div>
         )}
-      </div>
-
-      {/* 邀请操作按钮：置于筛选控件下方一行，靠右对齐 */}
-      <div className="w-full max-w-2xl mt-2 flex justify-end">
-        {(category.id === 'dating' || category.id === 'intimacy') && (
-          <div className="flex items-center gap-2">
-            <button onClick={createRoom} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'Invite Friends':'邀请朋友'}</button>
+        {(category.id === 'dating' || category.id === 'intimacy') && room && (
+          <div className="ml-3 flex items-center gap-2">
             <button onClick={copyLink} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'Copy Link':'复制链接'}</button>
             <button onClick={endRoom} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'End':'结束房间'}</button>
           </div>
         )}
       </div>
+
+      {/* 未创建房间时：在中下区域显示“邀请朋友”按钮 */}
+      {(!room && (category.id === 'dating' || category.id === 'intimacy')) && (
+        <div className="fixed inset-x-0 bottom-24 flex justify-center pointer-events-none">
+          <div className="pointer-events-auto">
+            <button onClick={createRoom} className={`px-4 py-2 rounded-full border ${theme.borderAccent} text-sm ${theme.hoverAccentBg}`}>{lang==='en'?'Invite Friends':'邀请朋友'}</button>
+          </div>
+        </div>
+      )}
 
       <div className="w-full max-w-2xl text-center mt-10">
         <h1 className={`text-2xl font-semibold mb-2 ${theme.textAccent}`}>

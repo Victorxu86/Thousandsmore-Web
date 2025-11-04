@@ -175,7 +175,7 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
   async function send() {
     if (!room || !myId || !input.trim()) return;
     if (!nick.trim()) { showToast(lang==='en'? 'Please set a nickname' : '请先设置昵称'); return; }
-    if (myCount >= 5) { showToast(lang==='en'?'You have reached the 5-message limit for this question.':'本题你已达到 5 条上限'); return; }
+    if (myCount >= 10) { showToast(lang==='en'?'You have reached the 10-message limit for this question.':'本题你已达到 10 条上限'); return; }
     const effectivePid = currentPrompt?.id || null;
     if (!effectivePid) { showToast(lang==='en'? 'Please wait for the question to load' : '请等待题目加载完成'); return; }
     const payload = { room_id: room, user_id: myId, nickname: nick || null, prompt_id: effectivePid, text: input.trim() };
@@ -301,11 +301,11 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
               <span className="opacity-70">{lang==='en'?'Partner is typing...':'对方正在输入...'}</span>
             ) : null}
           </span>
-          <span className="text-xs opacity-70">{myCount}/5</span>
+          <span className="text-xs opacity-70">{myCount}/10</span>
         </div>
         <div className="mt-1 flex items-center gap-2">
           <input ref={chatInputRef} value={input} onChange={(e)=>setInput(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') send(); }} placeholder={lang==='en'?'Type a message':'输入消息'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-base text-white placeholder:text-white/40" />
-          <button onClick={send} disabled={!nick.trim() || !currentPrompt?.id || myCount>=5} className="px-3 py-2 rounded bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50">{lang==='en'?'Send':'发送'}</button>
+          <button onClick={send} disabled={!nick.trim() || !currentPrompt?.id || myCount>=10} className="px-3 py-2 rounded bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50">{lang==='en'?'Send':'发送'}</button>
         </div>
       </div>
     </div>
@@ -393,7 +393,7 @@ function ChatBoxIntimacy({ room, lang, currentPrompt, setCurrentPrompt, setSeenP
   useEffect(() => { if (!realtimeReady) return; if (!myId) return; if (hasSentJoinRef.current) return; hasSentJoinRef.current = true; try { channelRef.current?.send({ type: 'broadcast', event: 'presence', payload: { action: 'join', user_id: myId } }); } catch {} }, [realtimeReady, myId]);
 
   async function send() {
-    if (!room || !myId || !input.trim()) return; if (!nick.trim()) { showToast(lang==='en'? 'Please set a nickname' : '请先设置昵称'); return; } if (myCount >= 5) { showToast(lang==='en'?'You have reached the 5-message limit for this question.':'本题你已达到 5 条上限'); return; }
+    if (!room || !myId || !input.trim()) return; if (!nick.trim()) { showToast(lang==='en'? 'Please set a nickname' : '请先设置昵称'); return; } if (myCount >= 10) { showToast(lang==='en'?'You have reached the 10-message limit for this question.':'本题你已达到 10 条上限'); return; }
     const effectivePid = currentPrompt?.id || null; if (!effectivePid) { showToast(lang==='en'? 'Please wait for the question to load' : '请等待题目加载完成'); return; }
     const payload = { room_id: room, user_id: myId, nickname: nick || null, prompt_id: effectivePid, text: input.trim() };
     const res = await fetch(`/api/chat/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) }); const data = await res.json(); if (!res.ok) { showToast(data.error || '发送失败'); return; }
@@ -447,11 +447,11 @@ function ChatBoxIntimacy({ room, lang, currentPrompt, setCurrentPrompt, setSeenP
           <span className="text-xs h-4">
             {peerStatus === 'joined' ? (<span className="text-green-400">{lang==='en'?'Partner joined':'对方已加入'}</span>) : peerStatus === 'left' ? (<span className="text-red-400">{lang==='en'?'Partner left':'对方已离开'}</span>) : peerTyping ? (<span className="opacity-70">{lang==='en'?'Partner is typing...':'对方正在输入...'}</span>) : null}
           </span>
-          <span className="text-xs opacity-70">{myCount}/5</span>
+          <span className="text-xs opacity-70">{myCount}/10</span>
         </div>
         <div className="mt-1 flex items-center gap-2">
           <input ref={chatInputRef} value={input} onChange={(e)=>setInput(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') send(); }} placeholder={lang==='en'?'Type a message':'输入消息'} className="flex-1 px-3 py-2 rounded border border-rose-600/60 bg-black/60 text-base text-white placeholder:text-white/40" />
-          <button onClick={send} disabled={!nick.trim() || !currentPrompt?.id || myCount>=5} className="px-3 py-2 rounded bg-rose-600 text-white text-sm hover:brightness-110 disabled:opacity-50">{lang==='en'?'Send':'发送'}</button>
+          <button onClick={send} disabled={!nick.trim() || !currentPrompt?.id || myCount>=10} className="px-3 py-2 rounded bg-rose-600 text-white text-sm hover:brightness-110 disabled:opacity-50">{lang==='en'?'Send':'发送'}</button>
         </div>
       </div>
     </div>
@@ -956,7 +956,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
                   ? (lang==='en' ? 'Share the link with friends to chat on Intimacy.' : '创建后复制链接邀请朋友在 激情 页面对话。')
                   : (lang==='en' ? 'Share the link with friends to chat in Deeptalk.' : '创建后复制链接邀请朋友在 Deeptalk 中对话。')
               }</p>
-              <p className="text-sm opacity-80 mb-4">{lang==='en'?'Note: Max 5 messages per person per question.':'说明：每道题每人允许发送 5 条消息。'}</p>
+              <p className="text-sm opacity-80 mb-4">{lang==='en'?'Note: Max 10 messages per person per question.':'说明：每道题每人允许发送 10 条消息。'}</p>
               <div className="flex items-center justify-end gap-2">
                 <button onClick={()=>setShowCreateConfirm(false)} className={`px-3 py-2 rounded-full text-sm border ${theme.borderAccent} hover:bg-white/10`}>{lang==='en'?'Cancel':'取消'}</button>
                 <button onClick={createRoomInternal} className={`px-4 py-2 rounded-full text-sm ${category.id==='intimacy' ? 'bg-rose-600' : 'bg-purple-600'} text-white hover:brightness-110`}>{lang==='en'?'Create':'创建'}</button>

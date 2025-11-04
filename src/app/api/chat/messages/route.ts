@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // 暂时活动限制：同一房间近两小时内最多 20 位发送者
+    // 暂时活动限制：同一房间近两小时内最多 10 位发送者
     {
       const since = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
       const { data: recentSenders, error: memErr } = await supabase
@@ -57,12 +57,12 @@ export async function POST(req: NextRequest) {
       if (memErr) return NextResponse.json({ error: memErr.message }, { status: 500 });
       const unique = new Set<string>();
       for (const r of (recentSenders || [])) { if (r.user_id) unique.add(String(r.user_id)); }
-      if (!unique.has(userId) && unique.size >= 20) {
-        return NextResponse.json({ error: "room member limit reached (20)" }, { status: 429 });
+      if (!unique.has(userId) && unique.size >= 10) {
+        return NextResponse.json({ error: "room member limit reached (10)" }, { status: 429 });
       }
     }
 
-    // 每题每人最多 2 句、总 40 句限制（活动配置）
+    // 每题每人最多 10 句（活动配置）
     if (promptId) {
       const { count: userCount, error: c1 } = await supabase
         .from("chat_messages")
@@ -71,15 +71,7 @@ export async function POST(req: NextRequest) {
         .eq("prompt_id", promptId)
         .eq("user_id", userId);
       if (c1) return NextResponse.json({ error: c1.message }, { status: 500 });
-      if ((userCount ?? 0) >= 2) return NextResponse.json({ error: "per-user limit reached (2)" }, { status: 429 });
-
-      const { count: totalCount, error: c2 } = await supabase
-        .from("chat_messages")
-        .select("id", { count: "exact", head: true })
-        .eq("room_id", roomId)
-        .eq("prompt_id", promptId);
-      if (c2) return NextResponse.json({ error: c2.message }, { status: 500 });
-      if ((totalCount ?? 0) >= 40) return NextResponse.json({ error: "room total limit reached (40)" }, { status: 429 });
+      if ((userCount ?? 0) >= 10) return NextResponse.json({ error: "per-user limit reached (10)" }, { status: 429 });
     }
 
     const { error } = await supabase.from("chat_messages").insert({ room_id: roomId, user_id: userId, nickname, prompt_id: promptId, text });

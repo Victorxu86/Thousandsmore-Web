@@ -278,7 +278,7 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
           <span>{lang === 'en' ? 'Chat' : '聊天'} {room ? `#${room}` : ''}</span>
           {!room && <span className="opacity-70">{lang === 'en' ? 'Create a chat to start' : '创建房间后开始聊天'}</span>}
         </div>
-        <div className="max-h-48 overflow-auto space-y-2 pr-1">
+        <div className="max-h-[38vh] sm:max-h-[42vh] overflow-auto space-y-2 pr-1">
           {items.map((m, i) => (
             <div key={m.id + i} className={`flex ${m.user_id === myId ? 'justify-end' : 'justify-start'}`}>
               <div className={`text-sm ${m.user_id === myId ? 'text-purple-200' : 'text-white/90'} max-w-[85%]`}>
@@ -432,7 +432,7 @@ function ChatBoxIntimacy({ room, lang, currentPrompt, setCurrentPrompt, setSeenP
           <span>{lang === 'en' ? 'Chat' : '聊天'} {room ? `#${room}` : ''}</span>
           {!room && <span className="opacity-70">{lang === 'en' ? 'Create a chat to start' : '创建房间后开始聊天'}</span>}
         </div>
-        <div className="max-h-48 overflow-auto space-y-2 pr-1">
+        <div className="max-h-[38vh] sm:max-h-[42vh] overflow-auto space-y-2 pr-1">
           {items.map((m, i) => (
             <div key={m.id + i} className={`flex ${m.user_id === myId ? 'justify-end' : 'justify-start'}`}>
               <div className={`text-sm ${m.user_id === myId ? 'text-rose-200' : 'text-white/90'} max-w-[85%]`}>

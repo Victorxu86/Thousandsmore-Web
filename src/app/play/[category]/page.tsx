@@ -250,7 +250,7 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
 
   return (
     <div className="fixed inset-x-0 bottom-4 flex justify-center pointer-events-none">
-      <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(168,85,247,.25)] p-3 flex flex-col max-h-[52vh] sm:max-h-[300px] md:max-h-[320px]">
+      <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(168,85,247,.25)] p-3 flex flex-col max-h-[240px] sm:max-h-[300px] md:max-h-[320px]">
         {needNick && typeof window !== 'undefined' && createPortal(
           (
             <div className="fixed inset-0 z-[10000] flex items-center justify-center">
@@ -429,7 +429,7 @@ function ChatBoxIntimacy({ room, lang, currentPrompt, setCurrentPrompt, setSeenP
 
   return (
     <div className="fixed inset-x-0 bottom-4 flex justify-center pointer-events-none">
-      <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(225,29,72,.25)] p-3 flex flex-col max-h-[52vh] sm:max-h-[300px] md:max-h-[320px]">
+      <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(225,29,72,.25)] p-3 flex flex-col max-h-[240px] sm:max-h-[300px] md:max-h-[320px]">
         {needNick && typeof window !== 'undefined' && createPortal((
           <div className="fixed inset-0 z-[10000] flex items-center justify-center">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
@@ -586,7 +586,7 @@ function ChatBoxParty({ room, lang, currentPrompt, setCurrentPrompt, setSeenProm
 
   return (
     <div className="fixed inset-x-0 bottom-4 flex justify-center pointer-events-none">
-      <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(234,179,8,.25)] p-3 flex flex-col max-h-[52vh] sm:max-h-[300px] md:max-h-[320px]">
+      <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(234,179,8,.25)] p-3 flex flex-col max-h-[240px] sm:max-h-[300px] md:max-h-[320px]">
         {needNick && typeof window !== 'undefined' && createPortal((
           <div className="fixed inset-0 z-[10000] flex items-center justify-center">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />

@@ -241,7 +241,7 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
 
   return (
     <div className="fixed inset-x-0 bottom-4 flex justify-center pointer-events-none">
-      <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(168,85,247,.25)] p-3">
+      <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(168,85,247,.25)] p-3 flex flex-col max-h-[40vh] sm:max-h-[44vh]">
         {needNick && typeof window !== 'undefined' && createPortal(
           (
             <div className="fixed inset-0 z-[10000] flex items-center justify-center">
@@ -271,7 +271,7 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
           <span>{lang === 'en' ? 'Chat' : '聊天'} {room ? `#${room}` : ''}</span>
           {!room && <span className="opacity-70">{lang === 'en' ? 'Create a chat to start' : '创建房间后开始聊天'}</span>}
         </div>
-        <div className="max-h-[38vh] sm:max-h-[42vh] overflow-auto space-y-2 pr-1">
+        <div className="flex-1 min-h-0 overflow-auto space-y-2 pr-1">
           {items.map((m, i) => (
             <div key={m.id + i} className={`flex ${m.user_id === myId ? 'justify-end' : 'justify-start'}`}>
               <div className={`text-sm ${m.user_id === myId ? 'text-purple-200' : 'text-white/90'} max-w-[85%]`}>
@@ -402,7 +402,7 @@ function ChatBoxIntimacy({ room, lang, currentPrompt, setCurrentPrompt, setSeenP
 
   return (
     <div className="fixed inset-x-0 bottom-4 flex justify-center pointer-events-none">
-      <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(225,29,72,.25)] p-3">
+      <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(225,29,72,.25)] p-3 flex flex-col max-h-[40vh] sm:max-h-[44vh]">
         {needNick && typeof window !== 'undefined' && createPortal((
           <div className="fixed inset-0 z-[10000] flex items-center justify-center">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
@@ -425,7 +425,7 @@ function ChatBoxIntimacy({ room, lang, currentPrompt, setCurrentPrompt, setSeenP
           <span>{lang === 'en' ? 'Chat' : '聊天'} {room ? `#${room}` : ''}</span>
           {!room && <span className="opacity-70">{lang === 'en' ? 'Create a chat to start' : '创建房间后开始聊天'}</span>}
         </div>
-        <div className="max-h-[38vh] sm:max-h-[42vh] overflow-auto space-y-2 pr-1">
+        <div className="flex-1 min-h-0 overflow-auto space-y-2 pr-1">
           {items.map((m, i) => (
             <div key={m.id + i} className={`flex ${m.user_id === myId ? 'justify-end' : 'justify-start'}`}>
               <div className={`text-sm ${m.user_id === myId ? 'text-rose-200' : 'text-white/90'} max-w-[85%]`}>

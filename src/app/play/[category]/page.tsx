@@ -451,6 +451,146 @@ function ChatBoxIntimacy({ room, lang, currentPrompt, setCurrentPrompt, setSeenP
   );
 }
 
+function ChatBoxParty({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds, remoteItems, prompts, showToast }: ChatBoxProps) {
+  const [loaded, setLoaded] = useState(false);
+  const [items, setItems] = useState<Array<{ id: string; user_id: string; nickname?: string; text: string; created_at: string }>>([]);
+  const [myId, setMyId] = useState<string>("");
+  const initialNick = (() => { try { return sessionStorage.getItem(`chat_nick_${room}`) || ""; } catch { return ""; } })();
+  const initialNeedNick = (() => { try { return sessionStorage.getItem(`chat_nick_set_${room}`) === '1' ? false : true; } catch { return true; } })();
+  const [nick, setNick] = useState<string>(initialNick);
+  const [needNick, setNeedNick] = useState<boolean>(initialNeedNick);
+  const [input, setInput] = useState("");
+  const [realtimeReady, setRealtimeReady] = useState<boolean>(false);
+  const isTyping = input.trim().length > 0;
+  const lastSentAtRef = useRef<number>(0);
+  const oneShotPollRef = useRef<number | null>(null);
+  const promptId = currentPrompt?.id || null;
+  const myCount = useMemo(() => items.filter((m) => m.user_id === myId).length, [items, myId]);
+  const [copiedInModal, setCopiedInModal] = useState<null | boolean>(null);
+  const [peerTyping, setPeerTyping] = useState<boolean>(false);
+  const typingHideRef = useRef<number | null>(null);
+  const lastTypingSentAtRef = useRef<number>(0);
+  const channelRef = useRef<RealtimeChannel | null>(null);
+  const [peerStatus, setPeerStatus] = useState<"idle"|"joined"|"left">("idle");
+  const statusHideRef = useRef<number | null>(null);
+  const hasSentJoinRef = useRef<boolean>(false);
+  const chatInputRef = useRef<HTMLInputElement | null>(null);
+  const nickInputRef = useRef<HTMLInputElement | null>(null);
+
+  async function copyLinkInModal() {
+    try {
+      const url = new URL(window.location.href).toString();
+      try { await navigator.clipboard.writeText(url); setCopiedInModal(true); return; } catch {}
+      const ta = document.createElement('textarea'); ta.value = url; ta.setAttribute('readonly', ''); ta.style.position = 'fixed'; ta.style.left = '-9999px'; document.body.appendChild(ta); ta.focus(); ta.select(); const ok = document.execCommand('copy'); document.body.removeChild(ta); setCopiedInModal(!!ok);
+    } catch { setCopiedInModal(false); }
+  }
+
+  useEffect(() => {
+    if (!room) return;
+    let uid = ""; try { uid = sessionStorage.getItem("chat_uid") || ""; } catch {}
+    if (!uid) { uid = Math.random().toString(36).slice(2, 10); try { sessionStorage.setItem("chat_uid", uid); } catch {} }
+    setMyId(uid);
+    (async () => {
+      const qs = new URLSearchParams({ room, limit: "50" }); if (promptId) qs.set("prompt", promptId);
+      const res = await fetch(`/api/chat/messages?${qs.toString()}`); const data = await res.json(); setItems(Array.isArray(data.items) ? data.items : []); setLoaded(true);
+    })();
+    const supa = getSupabaseBrowser();
+    type ChatRow = { id: string; room_id: string; user_id: string; text: string; prompt_id?: string | null; nickname?: string | null; created_at: string };
+    const channel = supa.channel(`room:${room}`, { config: { broadcast: { self: false } } })
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `room_id=eq.${room}` }, (payload: RealtimePostgresInsertPayload<ChatRow>) => {
+        const r = payload.new; if (promptId && r.prompt_id && r.prompt_id !== promptId) return; setItems((prev) => [...prev, { id: r.id, user_id: r.user_id, nickname: r.nickname || undefined, text: r.text, created_at: r.created_at }]);
+      })
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_rooms', filter: `id=eq.${room}` }, async (payload: RealtimePostgresChangesPayload<{ current_prompt_id?: string|null; ended_at?: string|null }>) => {
+        const pid = (payload.new as { current_prompt_id?: string|null } | null)?.current_prompt_id ?? null;
+        if (pid) {
+          const collection: Array<{ id: string; type: PromptType; text: string }> = (remoteItems.length ? remoteItems : prompts);
+          let hit = collection.find(x=>x.id===pid);
+          if (!hit) { try { const r = await fetch(`/api/prompts/one?id=${encodeURIComponent(pid)}&lang=${lang}`); const pj = await r.json(); if (r.ok && pj?.id) { hit = { id: pj.id, text: pj.text, type: pj.type }; } } catch {}
+          }
+          if (hit) { const p: Prompt = { id: hit.id, text: hit.text, type: hit.type }; setCurrentPrompt(p); setSeenPromptIds(new Set([p.id])); }
+        }
+        const ended = (payload.new as { ended_at?: string|null } | null)?.ended_at || null;
+        if (ended) { setPeerStatus("left"); if (statusHideRef.current) { try { clearTimeout(statusHideRef.current); } catch {} } statusHideRef.current = window.setTimeout(() => setPeerStatus("idle"), 3500); }
+      })
+      .on('broadcast', { event: 'typing' }, (payload: { payload?: { user_id?: string; prompt_id?: string | null } }) => {
+        const fromUser = payload?.payload?.user_id || ''; const pid = payload?.payload?.prompt_id || null; if (!fromUser || fromUser === myId) return; if (promptId && pid && pid !== promptId) return; setPeerTyping(true); if (typingHideRef.current) { try { clearTimeout(typingHideRef.current); } catch {} } typingHideRef.current = window.setTimeout(() => setPeerTyping(false), 2500);
+      })
+      .on('broadcast', { event: 'presence' }, (payload: { payload?: { action?: string; user_id?: string } }) => {
+        const fromUser = payload?.payload?.user_id || ''; const action = payload?.payload?.action || ''; if (!fromUser || fromUser === myId) return; if (action === 'join') { setPeerStatus('joined'); if (statusHideRef.current) { try { clearTimeout(statusHideRef.current); } catch {} } statusHideRef.current = window.setTimeout(() => setPeerStatus('idle'), 3000); }
+      })
+      .subscribe((status) => { if (status === 'SUBSCRIBED') setRealtimeReady(true); });
+    channelRef.current = channel;
+    return () => { try { setRealtimeReady(false); supa.removeChannel(channel); } catch {} };
+  }, [room, promptId, lang, remoteItems, prompts, setCurrentPrompt, setSeenPromptIds]);
+
+  useEffect(() => { if (!room) return; const now = Date.now(); if (isTyping && now - lastTypingSentAtRef.current > 1200) { lastTypingSentAtRef.current = now; try { channelRef.current?.send({ type: 'broadcast', event: 'typing', payload: { user_id: myId, prompt_id: promptId || null } }); } catch {} } }, [isTyping, room, myId, promptId]);
+  useEffect(() => { if (!realtimeReady) return; if (!myId) return; if (hasSentJoinRef.current) return; hasSentJoinRef.current = true; try { channelRef.current?.send({ type: 'broadcast', event: 'presence', payload: { action: 'join', user_id: myId } }); } catch {} }, [realtimeReady, myId]);
+
+  async function send() {
+    if (!room || !myId || !input.trim()) return; if (!nick.trim()) { showToast(lang==='en'? 'Please set a nickname' : '请先设置昵称'); return; } if (myCount >= 10) { showToast(lang==='en'?'You have reached the 10-message limit for this question.':'本题你已达到 10 条上限'); return; }
+    const effectivePid = currentPrompt?.id || null; if (!effectivePid) { showToast(lang==='en'? 'Please wait for the question to load' : '请等待题目加载完成'); return; }
+    const payload = { room_id: room, user_id: myId, nickname: nick || null, prompt_id: effectivePid, text: input.trim() };
+    const res = await fetch(`/api/chat/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) }); const data = await res.json(); if (!res.ok) { showToast(data.error || '发送失败'); return; }
+    if (!realtimeReady) { setItems((prev) => [...prev, { id: `temp-${Date.now()}-${Math.random().toString(36).slice(2,6)}`, user_id: myId, nickname: nick || undefined, text: input.trim(), created_at: new Date().toISOString() }]); }
+    lastSentAtRef.current = Date.now(); setInput(""); try { chatInputRef.current?.blur(); } catch {}
+    if (oneShotPollRef.current) { try { clearTimeout(oneShotPollRef.current); } catch {} }
+    oneShotPollRef.current = window.setTimeout(async () => { try { const qs = new URLSearchParams({ room, limit: "50" }); if (effectivePid) qs.set("prompt", String(effectivePid)); const r = await fetch(`/api/chat/messages?${qs.toString()}`); const j = await r.json(); if (Array.isArray(j.items)) { type ChatMsg = { id: string; user_id: string; nickname?: string; text: string; created_at: string }; const fetched = (j.items as Array<ChatMsg>).slice().sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime()); setItems(fetched); } } catch {} finally { oneShotPollRef.current = null; } }, 500);
+  }
+
+  useEffect(() => { if (!room) return; if (!input) return; const t = setTimeout(() => { fetch('/api/chat/room/ping', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room_id: room }) }); }, 800); return () => clearTimeout(t); }, [room, input]);
+  useEffect(() => { if (!room) return; const t = setInterval(async () => { if (isTyping) return; try { const rr = await fetch(`/api/chat/room?room_id=${encodeURIComponent(room)}`); const rj = await rr.json(); const pid: string | null = rj?.current_prompt_id ?? null; if (!pid) return; const collection: Array<{ id: string; type: PromptType; text: string }> = (remoteItems.length ? remoteItems : prompts); if (currentPrompt?.id === pid) return; const hit = collection.find(x=>x.id===pid); if (hit) { const p: Prompt = { id: hit.id, text: hit.text, type: hit.type }; setCurrentPrompt(p); setSeenPromptIds(new Set([p.id])); } } catch {} }, 2000); return () => clearInterval(t); }, [room, remoteItems, currentPrompt?.id, prompts, isTyping, setCurrentPrompt, setSeenPromptIds]);
+
+  return (
+    <div className="fixed inset-x-0 bottom-4 flex justify-center pointer-events-none">
+      <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(234,179,8,.25)] p-3 flex flex-col max-h-[52vh] sm:max-h-[300px] md:max-h-[320px]">
+        {needNick && typeof window !== 'undefined' && createPortal((
+          <div className="fixed inset-0 z-[10000] flex items-center justify-center">
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
+            <div className="relative z-10 w-[92%] max-w-sm rounded-xl bg-black/90 text-white p-5 border border-yellow-500/60">
+              <h3 className="text-lg font-semibold mb-2">{lang==='en'?'Set your nickname':'请输入昵称'}</h3>
+              <p className="text-sm opacity-80 mb-4">{lang==='en'?'This will be shown to your partner in this room only.':'只用于当前房间展示，不会被保存。'}</p>
+              <div className="flex items-center gap-2">
+                <input ref={nickInputRef} autoFocus value={nick} onChange={(e)=>setNick(e.target.value)} placeholder={lang==='en'?'Nickname':'昵称'} className="flex-1 px-3 py-2 rounded border border-yellow-500/60 bg-black/60 text-base text-white placeholder:text-white/40" />
+                <button onClick={()=>{ if(nick.trim()){ try { nickInputRef.current?.blur(); } catch {} setNeedNick(false); try { sessionStorage.setItem(`chat_nick_set_${room}`,'1'); sessionStorage.setItem(`chat_nick_${room}`, nick.trim()); } catch {} } }} className="px-4 py-2 rounded-full bg-yellow-500 text-black text-sm hover:brightness-110 disabled:opacity-50" disabled={!nick.trim()}>{lang==='en'?'Confirm':'确定'}</button>
+              </div>
+              <div className="mt-3 flex items-center justify-between">
+                <button onClick={copyLinkInModal} className="px-3 py-1.5 rounded-full border border-yellow-500/60 text-xs hover:bg-white/10">{lang==='en'?'Copy Link':'复制链接'}</button>
+                {copiedInModal === true && (<span className="text-xs text-yellow-200/90">{lang==='en'?'Copied. Please share the invite.':'复制成功，请分享邀请。'}</span>)}
+                {copiedInModal === false && (<span className="text-xs text-red-300/90">{lang==='en'?'Copy failed':'复制失败'}</span>)}
+              </div>
+            </div>
+          </div>
+        ), document.body)}
+        <div className="text-xs text-yellow-200/80 mb-2 flex items-center justify-between">
+          <span>{lang === 'en' ? 'Chat' : '聊天'} {room ? `#${room}` : ''}</span>
+          {!room && <span className="opacity-70">{lang === 'en' ? 'Create a chat to start' : '创建房间后开始聊天'}</span>}
+        </div>
+        <div className="flex-1 min-h-0 overflow-auto space-y-2 pr-1">
+          {items.map((m, i) => (
+            <div key={m.id + i} className={`flex ${m.user_id === myId ? 'justify-end' : 'justify-start'}`}>
+              <div className={`text-sm ${m.user_id === myId ? 'text-yellow-200' : 'text-white/90'} max-w-[85%]`}>
+                <span className="opacity-70 mr-2">{m.nickname || (m.user_id === myId ? (lang==='en'?'Me':'我') : 'Guest')}：</span>
+                <span>{m.text}</span>
+              </div>
+            </div>
+          ))}
+          {loaded && items.length === 0 && (<div className="text-sm opacity-70">{lang==='en'?'No messages yet':'还没有消息'}</div>)}
+        </div>
+        <div className="mt-2 flex items-center justify-between">
+          <span className="text-xs h-4">
+            {peerStatus === 'joined' ? (<span className="text-green-400">{lang==='en'?'Partner joined':'对方已加入'}</span>) : peerStatus === 'left' ? (<span className="text-red-400">{lang==='en'?'Partner left':'对方已离开'}</span>) : peerTyping ? (<span className="opacity-70">{lang==='en'?'Partner is typing...':'对方正在输入...'}</span>) : null}
+          </span>
+          <span className="text-xs opacity-70">{myCount}/10</span>
+        </div>
+        <div className="mt-1 flex items-center gap-2">
+          <input ref={chatInputRef} value={input} onChange={(e)=>setInput(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') send(); }} placeholder={lang==='en'?'Type a message':'输入消息'} className="flex-1 px-3 py-2 rounded border border-yellow-500/60 bg-black/60 text-base text-white placeholder:text-white/40" />
+          <button onClick={send} disabled={!nick.trim() || !currentPrompt?.id || myCount>=10} className="px-3 py-2 rounded bg-yellow-500 text-black text-sm hover:brightness-110 disabled:opacity-50">{lang==='en'?'Send':'发送'}</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 type PageProps = {
   params: { category: string };
 };
@@ -644,7 +784,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
       const items = Array.isArray(data.items) ? data.items : [];
       setRemoteItems(items as Array<{ id: string; type: PromptType; text: string; topic?: string | null }>);
       // 切题视为活跃：ping 房间，防止10分钟自动结束
-      if (room && (category.id === 'dating' || category.id === 'intimacy')) {
+      if (room && (category.id === 'dating' || category.id === 'intimacy' || category.id === 'party')) {
         fetch('/api/chat/room/ping', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room_id: room }) });
         // 若房间存在，拉取当前房间选中题目；若为空则以首题作为默认并写回房间
         try {
@@ -801,7 +941,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
             })()}
           </div>
         )}
-        {(category.id === 'dating' || category.id === 'intimacy') && room && (
+        {(category.id === 'dating' || category.id === 'intimacy' || category.id === 'party') && room && (
           <div className="ml-3 flex items-center gap-2">
             <button onClick={copyLink} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'Copy Link':'复制链接'}</button>
             <button onClick={endRoom} className={`px-3 py-1.5 rounded-full border ${theme.borderAccent} text-xs ${theme.hoverAccentBg}`}>{lang==='en'?'End':'结束房间'}</button>
@@ -810,7 +950,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
       </div>
 
       {/* 未创建房间时：在中下区域显示“邀请朋友”按钮 */}
-      {(!room && (category.id === 'dating' || category.id === 'intimacy')) && (
+      {(!room && (category.id === 'dating' || category.id === 'intimacy' || category.id === 'party')) && (
         <div className="fixed inset-x-0 bottom-24 flex justify-center pointer-events-none">
           <div className="pointer-events-auto">
             <button onClick={createRoom} className={`px-4 py-2 rounded-full border ${theme.borderAccent} text-sm ${theme.hoverAccentBg}`}>{lang==='en'?'Invite Friends':'邀请朋友'}</button>
@@ -939,7 +1079,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
           </div>
         )}
         {/* 创建房间确认弹窗（点击“邀请朋友”后出现） */}
-        {(category.id === 'dating' || category.id === 'intimacy') && showCreateConfirm && (
+        {(category.id === 'dating' || category.id === 'intimacy' || category.id === 'party') && showCreateConfirm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={()=>setShowCreateConfirm(false)} />
             <div className={`relative z-10 w-[92%] max-w-sm rounded-xl bg-black/90 text-white p-5 border ${theme.borderAccent} shadow-[0_10px_40px_rgba(168,85,247,.35)]`}>
@@ -947,18 +1087,24 @@ export default function PlayCategoryPage({ params }: PageProps) {
               <p className="text-sm opacity-80">{
                 category.id==='intimacy'
                   ? (lang==='en' ? 'Share the link with friends to chat on Intimacy.' : '创建后复制链接邀请朋友在 激情 页面对话。')
-                  : (lang==='en' ? 'Share the link with friends to chat in Deeptalk.' : '创建后复制链接邀请朋友在 Deeptalk 中对话。')
+                  : category.id==='party'
+                    ? (lang==='en' ? 'Share the link with friends to chat in Party.' : '创建后复制链接邀请朋友在 派对 页面对话。')
+                    : (lang==='en' ? 'Share the link with friends to chat in Deeptalk.' : '创建后复制链接邀请朋友在 Deeptalk 中对话。')
               }</p>
               <p className="text-sm opacity-80 mb-4">{lang==='en'?'Note: Max 10 messages per person per question.':'说明：每道题每人允许发送 10 条消息。'}</p>
               <div className="flex items-center justify-end gap-2">
                 <button onClick={()=>setShowCreateConfirm(false)} className={`px-3 py-2 rounded-full text-sm border ${theme.borderAccent} hover:bg-white/10`}>{lang==='en'?'Cancel':'取消'}</button>
-                <button onClick={createRoomInternal} className={`px-4 py-2 rounded-full text-sm ${category.id==='intimacy' ? 'bg-rose-600' : 'bg-purple-600'} text-white hover:brightness-110`}>{lang==='en'?'Create':'创建'}</button>
+                <button onClick={createRoomInternal} className={`px-4 py-2 rounded-full text-sm ${
+                  category.id==='intimacy' ? 'bg-rose-600 text-white' :
+                  category.id==='party' ? 'bg-yellow-500 text-black' :
+                  'bg-purple-600 text-white'
+                } hover:brightness-110`}>{lang==='en'?'Create':'创建'}</button>
               </div>
             </div>
           </div>
         )}
 
-        {/* 底部聊天面板：Deeptalk(朋友) 与 激情 页面开放 */}
+        {/* 底部聊天面板：Deeptalk/激情/派对 页面开放 */}
         {category.id === 'dating' && room ? (
           <ChatBox
             room={room}
@@ -972,6 +1118,17 @@ export default function PlayCategoryPage({ params }: PageProps) {
           />
         ) : category.id === 'intimacy' && room ? (
           <ChatBoxIntimacy
+            room={room}
+            lang={lang}
+            currentPrompt={currentPrompt}
+            setCurrentPrompt={setCurrentPrompt}
+            setSeenPromptIds={setSeenPromptIds}
+            remoteItems={(remoteItems.length ? remoteItems.map(({id,type,text})=>({id,type,text})) : [])}
+            prompts={prompts.map(({id,type,text})=>({id,type,text}))}
+            showToast={showToast}
+          />
+        ) : category.id === 'party' && room ? (
+          <ChatBoxParty
             room={room}
             lang={lang}
             currentPrompt={currentPrompt}

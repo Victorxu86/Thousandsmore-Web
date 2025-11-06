@@ -64,69 +64,116 @@ export default function AdminPage() {
     // 4) 4列（英文增量）：id	category_id	type	text_en（仅更新 text_en）
     // 5) 2列（英文增量）：id	text_en（仅更新 text_en）
     const rows = text.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    function splitCSVRespectQuotes(line: string): string[] {
+      const result: string[] = [];
+      let cur = "";
+      let inQuotes = false;
+      // 简单 CSV 解析：保留引号内的逗号，不在引号内时逗号为分隔符
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          if (inQuotes && line[i + 1] === '"') { // escaped quote
+            cur += '"';
+            i++;
+          } else {
+            inQuotes = !inQuotes;
+          }
+        } else if (ch === ',' && !inQuotes) {
+          result.push(cur);
+          cur = "";
+        } else {
+          cur += ch;
+        }
+      }
+      result.push(cur);
+      return result;
+    }
+    function unquote(s: string | undefined): string {
+      const v = (s ?? "").trim();
+      if (v.length >= 2 && v.startsWith('"') && v.endsWith('"')) {
+        return v.slice(1, -1).replace(/""/g, '"').trim();
+      }
+      return v;
+    }
     const parsed: PromptRow[] = [];
     for (const line of rows) {
       const useTabs = line.includes("\t");
-      const cols = useTabs ? line.split("\t") : line.split(/\s{2,}|,\s?/);
+      const cols = useTabs ? line.split("\t") : splitCSVRespectQuotes(line);
+      // 跳过表头（中英均可）
+      const first = (cols[0] || "").trim().toLowerCase();
+      const second = (cols[1] || "").trim().toLowerCase();
+      if (first === "id" && (second === "category_id" || second === "分类")) continue;
       if (cols.length >= 9) {
         // 9列：最后一列“操作”忽略
-        const id = cols[0]?.trim();
-        const category_id = cols[1]?.trim();
-        const type = cols[2]?.trim();
-        const textZh = cols[3] ?? "";
-        const textEn = cols[4] ?? "";
-        const isPub = (cols[5] ?? "true").toLowerCase() === "true";
-        const isTrial = (cols[6] ?? "false").toLowerCase() === "true";
-        const topic = (cols[7] ?? "").trim() || null;
+        const id = unquote(cols[0]);
+        const category_id = unquote(cols[1]).toLowerCase();
+        const type = unquote(cols[2]);
+        const textZh = unquote(cols[3]);
+        const textEn = unquote(cols[4]);
+        const isPub = unquote(cols[5]).toLowerCase() === "true";
+        const isTrial = unquote(cols[6]).toLowerCase() === "true";
+        const topic = unquote(cols[7]) || "哲学";
         parsed.push({ id, category_id, type: normalizeType(type), text: textZh, text_en: textEn, is_published: isPub, is_trial: isTrial, topic });
         continue;
       }
       if (cols.length >= 8) {
-        // 8列：中英双语
-        const id = cols[0]?.trim();
-        const category_id = cols[1]?.trim();
-        const type = cols[2]?.trim();
-        const textZh = cols[3] ?? "";
-        const textEn = cols[4] ?? "";
-        const isPub = (cols[5] ?? "true").toLowerCase() === "true";
-        const isTrial = (cols[6] ?? "false").toLowerCase() === "true";
-        const topic = (cols[7] ?? "").trim() || null;
+        // 8列或更多：优先按标准 8 列取值；若列数>8，则从末尾回溯布尔与主题，
+        // 并将中间的英文段合并归入 text_en，保证英文不外溢
+        const id = unquote(cols[0]);
+        const category_id = unquote(cols[1]).toLowerCase();
+        const type = unquote(cols[2]);
+        if (cols.length === 8) {
+          const textZh = unquote(cols[3]);
+          const textEn = unquote(cols[4]);
+          const isPub = unquote(cols[5]).toLowerCase() === "true";
+          const isTrial = unquote(cols[6]).toLowerCase() === "true";
+          const topic = unquote(cols[7]) || "哲学";
+          parsed.push({ id, category_id, type: normalizeType(type), text: textZh, text_en: textEn, is_published: isPub, is_trial: isTrial, topic });
+          continue;
+        }
+        // 列数 > 8 时：严格按列位映射，不再做中/英启发式切分
+        // 末尾三列：is_published, is_trial, topic
+        const topic = unquote(cols[cols.length - 1]) || "哲学";
+        const isTrial = unquote(cols[cols.length - 2]).toLowerCase() === "true";
+        const isPub = unquote(cols[cols.length - 3]).toLowerCase() === "true";
+        const textZh = unquote(cols[3]); // 中文列固定取第 4 列
+        const textEn = unquote(cols.slice(4, cols.length - 3).join(",")); // 英文为第 5 列到倒数第 4 列的合并
         parsed.push({ id, category_id, type: normalizeType(type), text: textZh, text_en: textEn, is_published: isPub, is_trial: isTrial, topic });
         continue;
       }
       if (cols.length === 7) {
         // 7列：仅中文
-        const id = cols[0]?.trim();
-        const category_id = cols[1]?.trim();
-        const type = cols[2]?.trim();
-        const textZh = cols[3] ?? "";
-        const isPub = (cols[4] ?? "true").toLowerCase() === "true";
-        const isTrial = (cols[5] ?? "false").toLowerCase() === "true";
-        const topic = (cols[6] ?? "").trim() || null;
+        const id = unquote(cols[0]);
+        const category_id = unquote(cols[1]).toLowerCase();
+        const type = unquote(cols[2]);
+        const textZh = unquote(cols[3]);
+        const isPub = unquote(cols[4]).toLowerCase() === "true";
+        const isTrial = unquote(cols[5]).toLowerCase() === "true";
+        const topic = unquote(cols[6]) || "哲学";
         parsed.push({ id, category_id, type: normalizeType(type), text: textZh, text_en: undefined, is_published: isPub, is_trial: isTrial, topic });
         continue;
       }
       if (cols.length === 4) {
         // 4列：英文增量（仅更新 text_en） id, category_id, type, text_en
-        const id = cols[0]?.trim();
-        const textEn = cols[3] ?? "";
-        parsed.push({ id, category_id: cols[1]?.trim() || "", type: normalizeType(cols[2]?.trim() || "question"), text: "", text_en: textEn, is_published: true, is_trial: false, topic: null });
+        const id = unquote(cols[0]);
+        const textEn = unquote(cols[3]);
+        parsed.push({ id, category_id: unquote(cols[1]).toLowerCase(), type: normalizeType(unquote(cols[2]) || "question"), text: "", text_en: textEn, is_published: true, is_trial: false, topic: "哲学" });
         continue;
       }
       if (cols.length === 2) {
         // 2列：英文增量（仅更新 text_en） id, text_en
-        const id = cols[0]?.trim();
-        const textEn = cols[1] ?? "";
-        parsed.push({ id, category_id: "intimacy", type: "truth", text: "", text_en: textEn, is_published: true, is_trial: false, topic: null });
+        const id = unquote(cols[0]);
+        const textEn = unquote(cols[1]);
+        parsed.push({ id, category_id: "intimacy", type: "truth", text: "", text_en: textEn, is_published: true, is_trial: false, topic: "哲学" });
         continue;
       }
       // 兜底（视为旧格式：id, category, type, text...）
       if (cols.length >= 4) {
-        const id = cols[0]?.trim();
-        const category_id = cols[1]?.trim();
-        const type = cols[2]?.trim();
-        const textCol = cols.slice(3).join(" ");
-        parsed.push({ id, category_id, type: normalizeType(type), text: textCol, text_en: undefined, is_published: true, is_trial: false, topic: null });
+        const id = unquote(cols[0]);
+        const category_id = unquote(cols[1]).toLowerCase();
+        const type = unquote(cols[2]);
+        const textCol = unquote(cols.slice(3).join(" "));
+        parsed.push({ id, category_id, type: normalizeType(type), text: textCol, text_en: undefined, is_published: true, is_trial: false, topic: "哲学" });
       }
     }
     return parsed;

@@ -627,7 +627,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
   const defaultTopics = useMemo(() => {
     // 与数据库当前 topic 值保持一致（中文键），避免与接口返回合并时重复
     const map: Record<string, string[]> = {
-      dating: ["了解", "升温"],
+      dating: ["了解", "升温", "哲学"],
       intimacy: ["轻松", "热情", "极限"],
       party: ["破冰", "八卦", "找乐子"],
     };

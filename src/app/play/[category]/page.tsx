@@ -50,6 +50,7 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
   const hasSentJoinRef = useRef<boolean>(false);
   const chatInputRef = useRef<HTMLInputElement | null>(null);
   const nickInputRef = useRef<HTMLInputElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
 
   async function copyLinkInModal() {
     try {
@@ -206,6 +207,14 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
     }, 500);
   }
 
+  // 发送后（或短时间内到达的服务端回推）自动滚动到底部
+  useEffect(() => {
+    if (!listRef.current) return;
+    if (Date.now() - lastSentAtRef.current < 2000) {
+      try { listRef.current.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' }); } catch {}
+    }
+  }, [items]);
+
   // 输入时 ping，防止超时结束
   useEffect(() => {
     if (!room) return;
@@ -271,7 +280,7 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
           <span>{lang === 'en' ? 'Chat' : '聊天'} {room ? `#${room}` : ''}</span>
           {!room && <span className="opacity-70">{lang === 'en' ? 'Create a chat to start' : '创建房间后开始聊天'}</span>}
         </div>
-        <div className="flex-1 min-h-0 overflow-auto space-y-2 pr-1">
+        <div ref={listRef} className="flex-1 min-h-0 overflow-auto space-y-2 pr-1 no-scrollbar">
           {items.map((m, i) => (
             <div key={m.id + i} className={`flex ${m.user_id === myId ? 'justify-end' : 'justify-start'}`}>
               <div className={`text-sm ${m.user_id === myId ? 'text-purple-200' : 'text-white/90'} max-w-[85%]`}>
@@ -300,6 +309,16 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
           <input ref={chatInputRef} value={input} onChange={(e)=>setInput(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') send(); }} placeholder={lang==='en'?'Type a message':'输入消息'} className="flex-1 px-3 py-2 rounded border border-purple-500/60 bg-black/60 text-base text-white placeholder:text-white/40" />
           <button onClick={send} disabled={!nick.trim() || !currentPrompt?.id || myCount>=10} className="px-3 py-2 rounded bg-purple-600 text-white text-sm hover:brightness-110 disabled:opacity-50">{lang==='en'?'Send':'发送'}</button>
         </div>
+        {/* 隐藏内部滚动条样式（仅作用于本页面） */}
+        <style jsx global>{`
+          .no-scrollbar {
+            -ms-overflow-style: none; /* IE and Edge */
+            scrollbar-width: none; /* Firefox */
+          }
+          .no-scrollbar::-webkit-scrollbar {
+            display: none; /* Chrome, Safari, Opera */
+          }
+        `}</style>
       </div>
     </div>
   );
@@ -330,6 +349,7 @@ function ChatBoxIntimacy({ room, lang, currentPrompt, setCurrentPrompt, setSeenP
   const hasSentJoinRef = useRef<boolean>(false);
   const chatInputRef = useRef<HTMLInputElement | null>(null);
   const nickInputRef = useRef<HTMLInputElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
 
   async function copyLinkInModal() {
     try {
@@ -396,6 +416,13 @@ function ChatBoxIntimacy({ room, lang, currentPrompt, setCurrentPrompt, setSeenP
     oneShotPollRef.current = window.setTimeout(async () => { try { const qs = new URLSearchParams({ room, limit: "50" }); if (effectivePid) qs.set("prompt", String(effectivePid)); const r = await fetch(`/api/chat/messages?${qs.toString()}`); const j = await r.json(); if (Array.isArray(j.items)) { type ChatMsg = { id: string; user_id: string; nickname?: string; text: string; created_at: string }; const fetched = (j.items as Array<ChatMsg>).slice().sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime()); setItems(fetched); } } catch {} finally { oneShotPollRef.current = null; } }, 500);
   }
 
+  useEffect(() => {
+    if (!listRef.current) return;
+    if (Date.now() - lastSentAtRef.current < 2000) {
+      try { listRef.current.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' }); } catch {}
+    }
+  }, [items]);
+
   useEffect(() => { if (!room) return; if (!input) return; const t = setTimeout(() => { fetch('/api/chat/room/ping', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room_id: room }) }); }, 800); return () => clearTimeout(t); }, [room, input]);
 
   useEffect(() => { if (!room) return; const t = setInterval(async () => { if (isTyping) return; try { const rr = await fetch(`/api/chat/room?room_id=${encodeURIComponent(room)}`); const rj = await rr.json(); const pid: string | null = rj?.current_prompt_id ?? null; if (!pid) return; const collection: Array<{ id: string; type: PromptType; text: string }> = (remoteItems.length ? remoteItems : prompts); if (currentPrompt?.id === pid) return; const hit = collection.find(x=>x.id===pid); if (hit) { const p: Prompt = { id: hit.id, text: hit.text, type: hit.type }; setCurrentPrompt(p); setSeenPromptIds(new Set([p.id])); } } catch {} }, 2000); return () => clearInterval(t); }, [room, remoteItems, currentPrompt?.id, prompts, isTyping, setCurrentPrompt, setSeenPromptIds]);
@@ -425,7 +452,7 @@ function ChatBoxIntimacy({ room, lang, currentPrompt, setCurrentPrompt, setSeenP
           <span>{lang === 'en' ? 'Chat' : '聊天'} {room ? `#${room}` : ''}</span>
           {!room && <span className="opacity-70">{lang === 'en' ? 'Create a chat to start' : '创建房间后开始聊天'}</span>}
         </div>
-        <div className="flex-1 min-h-0 overflow-auto space-y-2 pr-1">
+        <div ref={listRef} className="flex-1 min-h-0 overflow-auto space-y-2 pr-1 no-scrollbar">
           {items.map((m, i) => (
             <div key={m.id + i} className={`flex ${m.user_id === myId ? 'justify-end' : 'justify-start'}`}>
               <div className={`text-sm ${m.user_id === myId ? 'text-rose-200' : 'text-white/90'} max-w-[85%]`}>
@@ -446,6 +473,15 @@ function ChatBoxIntimacy({ room, lang, currentPrompt, setCurrentPrompt, setSeenP
           <input ref={chatInputRef} value={input} onChange={(e)=>setInput(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') send(); }} placeholder={lang==='en'?'Type a message':'输入消息'} className="flex-1 px-3 py-2 rounded border border-rose-600/60 bg-black/60 text-base text-white placeholder:text-white/40" />
           <button onClick={send} disabled={!nick.trim() || !currentPrompt?.id || myCount>=10} className="px-3 py-2 rounded bg-rose-600 text-white text-sm hover:brightness-110 disabled:opacity-50">{lang==='en'?'Send':'发送'}</button>
         </div>
+        <style jsx global>{`
+          .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+          .no-scrollbar::-webkit-scrollbar {
+            display: none;
+          }
+        `}</style>
       </div>
     </div>
   );
@@ -476,6 +512,7 @@ function ChatBoxParty({ room, lang, currentPrompt, setCurrentPrompt, setSeenProm
   const hasSentJoinRef = useRef<boolean>(false);
   const chatInputRef = useRef<HTMLInputElement | null>(null);
   const nickInputRef = useRef<HTMLInputElement | null>(null);
+  const listRef = useRef<HTMLDivElement | null>(null);
 
   async function copyLinkInModal() {
     try {
@@ -537,6 +574,13 @@ function ChatBoxParty({ room, lang, currentPrompt, setCurrentPrompt, setSeenProm
     oneShotPollRef.current = window.setTimeout(async () => { try { const qs = new URLSearchParams({ room, limit: "50" }); if (effectivePid) qs.set("prompt", String(effectivePid)); const r = await fetch(`/api/chat/messages?${qs.toString()}`); const j = await r.json(); if (Array.isArray(j.items)) { type ChatMsg = { id: string; user_id: string; nickname?: string; text: string; created_at: string }; const fetched = (j.items as Array<ChatMsg>).slice().sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime()); setItems(fetched); } } catch {} finally { oneShotPollRef.current = null; } }, 500);
   }
 
+  useEffect(() => {
+    if (!listRef.current) return;
+    if (Date.now() - lastSentAtRef.current < 2000) {
+      try { listRef.current.scrollTo({ top: listRef.current.scrollHeight, behavior: 'smooth' }); } catch {}
+    }
+  }, [items]);
+
   useEffect(() => { if (!room) return; if (!input) return; const t = setTimeout(() => { fetch('/api/chat/room/ping', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room_id: room }) }); }, 800); return () => clearTimeout(t); }, [room, input]);
   useEffect(() => { if (!room) return; const t = setInterval(async () => { if (isTyping) return; try { const rr = await fetch(`/api/chat/room?room_id=${encodeURIComponent(room)}`); const rj = await rr.json(); const pid: string | null = rj?.current_prompt_id ?? null; if (!pid) return; const collection: Array<{ id: string; type: PromptType; text: string }> = (remoteItems.length ? remoteItems : prompts); if (currentPrompt?.id === pid) return; const hit = collection.find(x=>x.id===pid); if (hit) { const p: Prompt = { id: hit.id, text: hit.text, type: hit.type }; setCurrentPrompt(p); setSeenPromptIds(new Set([p.id])); } } catch {} }, 2000); return () => clearInterval(t); }, [room, remoteItems, currentPrompt?.id, prompts, isTyping, setCurrentPrompt, setSeenPromptIds]);
 
@@ -565,7 +609,7 @@ function ChatBoxParty({ room, lang, currentPrompt, setCurrentPrompt, setSeenProm
           <span>{lang === 'en' ? 'Chat' : '聊天'} {room ? `#${room}` : ''}</span>
           {!room && <span className="opacity-70">{lang === 'en' ? 'Create a chat to start' : '创建房间后开始聊天'}</span>}
         </div>
-        <div className="flex-1 min-h-0 overflow-auto space-y-2 pr-1">
+        <div ref={listRef} className="flex-1 min-h-0 overflow-auto space-y-2 pr-1 no-scrollbar">
           {items.map((m, i) => (
             <div key={m.id + i} className={`flex ${m.user_id === myId ? 'justify-end' : 'justify-start'}`}>
               <div className={`text-sm ${m.user_id === myId ? 'text-yellow-200' : 'text-white/90'} max-w-[85%]`}>
@@ -586,6 +630,15 @@ function ChatBoxParty({ room, lang, currentPrompt, setCurrentPrompt, setSeenProm
           <input ref={chatInputRef} value={input} onChange={(e)=>setInput(e.target.value)} onKeyDown={(e)=>{ if(e.key==='Enter') send(); }} placeholder={lang==='en'?'Type a message':'输入消息'} className="flex-1 px-3 py-2 rounded border border-yellow-500/60 bg-black/60 text-base text-white placeholder:text-white/40" />
           <button onClick={send} disabled={!nick.trim() || !currentPrompt?.id || myCount>=10} className="px-3 py-2 rounded bg-yellow-500 text-black text-sm hover:brightness-110 disabled:opacity-50">{lang==='en'?'Send':'发送'}</button>
         </div>
+        <style jsx global>{`
+          .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+          }
+          .no-scrollbar::-webkit-scrollbar {
+            display: none;
+          }
+        `}</style>
       </div>
     </div>
   );

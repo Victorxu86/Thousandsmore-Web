@@ -241,7 +241,7 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
 
   return (
     <div className="fixed inset-x-0 bottom-4 flex justify-center pointer-events-none">
-      <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(168,85,247,.25)] p-3 flex flex-col max-h-[40vh] sm:max-h-[44vh]">
+      <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(168,85,247,.25)] p-3 flex flex-col max-h-[52vh] sm:max-h-[300px] md:max-h-[320px]">
         {needNick && typeof window !== 'undefined' && createPortal(
           (
             <div className="fixed inset-0 z-[10000] flex items-center justify-center">
@@ -402,7 +402,7 @@ function ChatBoxIntimacy({ room, lang, currentPrompt, setCurrentPrompt, setSeenP
 
   return (
     <div className="fixed inset-x-0 bottom-4 flex justify-center pointer-events-none">
-      <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(225,29,72,.25)] p-3 flex flex-col max-h-[40vh] sm:max-h-[44vh]">
+      <div className="pointer-events-auto w-[92%] max-w-2xl rounded-xl bg-black/80 backdrop-blur-md shadow-[0_10px_30px_rgba(225,29,72,.25)] p-3 flex flex-col max-h-[52vh] sm:max-h-[300px] md:max-h-[320px]">
         {needNick && typeof window !== 'undefined' && createPortal((
           <div className="fixed inset-0 z-[10000] flex items-center justify-center">
             <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
@@ -758,7 +758,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
   const containerVisible = contentReady || (category.id === "intimacy" && hydrated);
 
   return (
-    <div className={`min-h-screen p-4 sm:p-6 flex flex-col items-center gap-6 transition-opacity duration-300 ${containerVisible ? "opacity-100" : "opacity-0"}`}>
+    <div className={`min-h-screen p-4 sm:p-6 pb-40 sm:pb-44 md:pb-52 flex flex-col items-center gap-6 transition-opacity duration-300 ${containerVisible ? "opacity-100" : "opacity-0"}`}>
       {/* 背景遮罩：内容未就绪 → 实色；激情未确认 → 磨砂 */}
       {!contentReady && category.id !== "intimacy" && (
         <div className="fixed inset-0 bg-background" />

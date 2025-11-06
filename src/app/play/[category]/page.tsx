@@ -95,12 +95,12 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
     })();
     // 实时订阅
     const supa = getSupabaseBrowser();
-    type ChatRow = { room_id: string; user_id: string; text: string; prompt_id?: string | null; nickname?: string | null; created_at: string };
+    type ChatRow = { id: string; room_id: string; user_id: string; text: string; prompt_id?: string | null; nickname?: string | null; created_at: string };
     const channel = supa.channel(`room:${room}`, { config: { broadcast: { self: false } } })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `room_id=eq.${room}` }, (payload: RealtimePostgresInsertPayload<ChatRow>) => {
         const r = payload.new;
         if (promptId && r.prompt_id && r.prompt_id !== promptId) return;
-        setItems((prev) => [...prev, { id: Math.random().toString(36), user_id: r.user_id, nickname: r.nickname || undefined, text: r.text, created_at: r.created_at }]);
+        setItems((prev) => [...prev, { id: r.id, user_id: r.user_id, nickname: r.nickname || undefined, text: r.text, created_at: r.created_at }]);
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_rooms', filter: `id=eq.${room}` }, async (payload: RealtimePostgresChangesPayload<{ current_prompt_id?: string|null; ended_at?: string|null }>) => {
         const pid = (payload.new as { current_prompt_id?: string|null } | null)?.current_prompt_id ?? null;
@@ -183,7 +183,7 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
     const data = await res.json();
     if (!res.ok) { showToast(data.error || '发送失败'); return; }
     if (!realtimeReady) {
-      setItems((prev) => [...prev, { id: Math.random().toString(36), user_id: myId, nickname: nick || undefined, text: input.trim(), created_at: new Date().toISOString() }]);
+      setItems((prev) => [...prev, { id: `temp-${Date.now()}-${Math.random().toString(36).slice(2,6)}`, user_id: myId, nickname: nick || undefined, text: input.trim(), created_at: new Date().toISOString() }]);
     }
     lastSentAtRef.current = Date.now();
     setInput("");
@@ -198,15 +198,8 @@ function ChatBox({ room, lang, currentPrompt, setCurrentPrompt, setSeenPromptIds
         const j = await r.json();
         if (Array.isArray(j.items)) {
           type ChatMsg = { id: string; user_id: string; nickname?: string; text: string; created_at: string };
-          const fetched = j.items as Array<ChatMsg>;
-          setItems((prev) => {
-            const byId = new Map<string, ChatMsg>();
-            for (const m of prev) byId.set(m.id, m);
-            for (const m of fetched) byId.set(m.id, m);
-            const merged = Array.from(byId.values());
-            merged.sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
-            return merged;
-          });
+          const fetched = (j.items as Array<ChatMsg>).slice().sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+          setItems(fetched);
         }
       } catch {}
       finally { oneShotPollRef.current = null; }
@@ -358,10 +351,10 @@ function ChatBoxIntimacy({ room, lang, currentPrompt, setCurrentPrompt, setSeenP
       const res = await fetch(`/api/chat/messages?${qs.toString()}`); const data = await res.json(); setItems(Array.isArray(data.items) ? data.items : []); setLoaded(true);
     })();
     const supa = getSupabaseBrowser();
-    type ChatRow = { room_id: string; user_id: string; text: string; prompt_id?: string | null; nickname?: string | null; created_at: string };
+    type ChatRow = { id: string; room_id: string; user_id: string; text: string; prompt_id?: string | null; nickname?: string | null; created_at: string };
     const channel = supa.channel(`room:${room}`, { config: { broadcast: { self: false } } })
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'chat_messages', filter: `room_id=eq.${room}` }, (payload: RealtimePostgresInsertPayload<ChatRow>) => {
-        const r = payload.new; if (promptId && r.prompt_id && r.prompt_id !== promptId) return; setItems((prev) => [...prev, { id: Math.random().toString(36), user_id: r.user_id, nickname: r.nickname || undefined, text: r.text, created_at: r.created_at }]);
+        const r = payload.new; if (promptId && r.prompt_id && r.prompt_id !== promptId) return; setItems((prev) => [...prev, { id: r.id, user_id: r.user_id, nickname: r.nickname || undefined, text: r.text, created_at: r.created_at }]);
       })
       .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'chat_rooms', filter: `id=eq.${room}` }, async (payload: RealtimePostgresChangesPayload<{ current_prompt_id?: string|null; ended_at?: string|null }>) => {
         const pid = (payload.new as { current_prompt_id?: string|null } | null)?.current_prompt_id ?? null;
@@ -397,10 +390,10 @@ function ChatBoxIntimacy({ room, lang, currentPrompt, setCurrentPrompt, setSeenP
     const effectivePid = currentPrompt?.id || null; if (!effectivePid) { showToast(lang==='en'? 'Please wait for the question to load' : '请等待题目加载完成'); return; }
     const payload = { room_id: room, user_id: myId, nickname: nick || null, prompt_id: effectivePid, text: input.trim() };
     const res = await fetch(`/api/chat/messages`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(payload) }); const data = await res.json(); if (!res.ok) { showToast(data.error || '发送失败'); return; }
-    if (!realtimeReady) { setItems((prev) => [...prev, { id: Math.random().toString(36), user_id: myId, nickname: nick || undefined, text: input.trim(), created_at: new Date().toISOString() }]); }
+    if (!realtimeReady) { setItems((prev) => [...prev, { id: `temp-${Date.now()}-${Math.random().toString(36).slice(2,6)}`, user_id: myId, nickname: nick || undefined, text: input.trim(), created_at: new Date().toISOString() }]); }
     lastSentAtRef.current = Date.now(); setInput(""); try { chatInputRef.current?.blur(); } catch {}
     if (oneShotPollRef.current) { try { clearTimeout(oneShotPollRef.current); } catch {} }
-    oneShotPollRef.current = window.setTimeout(async () => { try { const qs = new URLSearchParams({ room, limit: "50" }); if (effectivePid) qs.set("prompt", String(effectivePid)); const r = await fetch(`/api/chat/messages?${qs.toString()}`); const j = await r.json(); if (Array.isArray(j.items)) { type ChatMsg = { id: string; user_id: string; nickname?: string; text: string; created_at: string }; const fetched = j.items as Array<ChatMsg>; setItems((prev) => { const byId = new Map<string, ChatMsg>(); for (const m of prev) byId.set(m.id, m); for (const m of fetched) byId.set(m.id, m); const merged = Array.from(byId.values()); merged.sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime()); return merged; }); } } catch {} finally { oneShotPollRef.current = null; } }, 500);
+    oneShotPollRef.current = window.setTimeout(async () => { try { const qs = new URLSearchParams({ room, limit: "50" }); if (effectivePid) qs.set("prompt", String(effectivePid)); const r = await fetch(`/api/chat/messages?${qs.toString()}`); const j = await r.json(); if (Array.isArray(j.items)) { type ChatMsg = { id: string; user_id: string; nickname?: string; text: string; created_at: string }; const fetched = (j.items as Array<ChatMsg>).slice().sort((a,b)=> new Date(a.created_at).getTime() - new Date(b.created_at).getTime()); setItems(fetched); } } catch {} finally { oneShotPollRef.current = null; } }, 500);
   }
 
   useEffect(() => { if (!room) return; if (!input) return; const t = setTimeout(() => { fetch('/api/chat/room/ping', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ room_id: room }) }); }, 800); return () => clearTimeout(t); }, [room, input]);

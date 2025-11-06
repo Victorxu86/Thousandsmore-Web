@@ -18,7 +18,7 @@ export default function PricingPage() {
         {/* 单分类解锁：显示原价（删线）+ 促销价 */}
         {[
           { id: "dating", zh: "Deeptalk", en: "Deeptalk", old: 8.8, now: 2.8 },
-          { id: "party", zh: "酒桌", en: "Party", old: 8.8, now: 4.8 },
+          { id: "party", zh: "派对", en: "Party", old: 8.8, now: 4.8 },
           { id: "intimacy", zh: "激情", en: "Intimacy", old: 8.8, now: 8.8 },
         ].map((c) => (
           <div key={c.id} className="rounded-lg border border-purple-500/40 p-6 bg-black/20 backdrop-blur-[2px] shadow-[0_8px_30px_rgba(88,28,135,0.25)]">

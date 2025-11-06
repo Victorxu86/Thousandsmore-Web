@@ -5,7 +5,7 @@ update public.categories set name = 'Deeptalk'
 where id = 'dating';
 
 -- 其他分类名称如需调整，可在此扩展；当前保持原有中文名：
--- party（酒桌）、intimacy（激情）维持不变
+-- party（派对）、intimacy（激情）维持不变
 
 -- 说明：
 -- 1) 我们保留 category_id 不变（dating/party/intimacy），以避免前端与数据的耦合破坏。

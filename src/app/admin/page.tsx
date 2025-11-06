@@ -206,7 +206,7 @@ export default function AdminPage() {
         <select className="rounded border px-3 py-2" value={category} onChange={(e) => setCategory(e.target.value)}>
           <option value="">全部分类</option>
           <option value="dating">朋友</option>
-          <option value="party">酒桌</option>
+          <option value="party">派对</option>
           <option value="intimacy">激情</option>
         </select>
         <button onClick={load} className="px-3 py-2 rounded border hover:bg-black/5">加载</button>

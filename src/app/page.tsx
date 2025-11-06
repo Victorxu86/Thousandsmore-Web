@@ -64,7 +64,7 @@ export default function Home() {
             </div>
           </Link>
 
-          {/* 酒桌（金） */}
+          {/* 派对（金） */}
           <Link href="/play/party" className="group block">
             <div className={`relative mx-auto w-[180px] h-[180px] sm:w-[220px] sm:h-[220px] rounded-full border-2 border-yellow-500/60 flex items-center justify-center overflow-hidden ${intro ? "intro-ring-2" : ""}`}>
               <div className="ring-breathe border-yellow-500/70" />
@@ -74,7 +74,7 @@ export default function Home() {
               <div className="absolute inset-[-10%] rounded-full border-2 border-yellow-500/60 wobble-spin" style={{ animationDuration: "7.6s", animationDelay: "-.7s" }} />
               <div className="absolute inset-0 rounded-full border-2 border-yellow-500 wobble-spin" style={{ animationDuration: "8.8s", animationDelay: "-1.1s" }} />
               <div className="relative text-center">
-                <div className="text-lg sm:text-xl uppercase tracking-wide opacity-95 font-semibold mb-1">{lang === "en" ? "Party" : "酒桌"}</div>
+                <div className="text-lg sm:text-xl uppercase tracking-wide opacity-95 font-semibold mb-1">{lang === "en" ? "Party" : "派对"}</div>
                 <div className="text-xs opacity-70">{lang === "en" ? "Truth or Dare" : "真心话/大冒险"}</div>
               </div>
             </div>

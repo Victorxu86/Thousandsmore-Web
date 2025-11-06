@@ -820,7 +820,7 @@ export default function PlayCategoryPage({ params }: PageProps) {
 
       <div className="w-full max-w-2xl text-center mt-10">
         <h1 className={`text-2xl font-semibold mb-2 ${theme.textAccent}`}>
-          {category.id === "party" ? (lang === "en" ? "Party" : "酒桌") : category.id === "intimacy" ? (lang === "en" ? "Intimacy" : "激情") : (lang === "en" ? "Deeptalk" : "Deeptalk")}
+          {category.id === "party" ? (lang === "en" ? "Party" : "派对") : category.id === "intimacy" ? (lang === "en" ? "Intimacy" : "激情") : (lang === "en" ? "Deeptalk" : "Deeptalk")}
         </h1>
 
         {/* 激情页年龄确认弹窗 */}
